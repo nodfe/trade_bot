@@ -1,0 +1,68 @@
+from datetime import date
+
+from loguru import logger
+
+from app.modules.market_data.providers.akshare import AKShareProvider
+from app.modules.market_data.providers.base import Bar, MarketDataSource, Quote, StockInfo, DragonTigerItem, LimitUpItem, NewsItem
+from app.modules.market_data.providers.tushare import TushareProvider
+
+
+class DataFacade:
+    """统一数据入口，主备自动降级"""
+
+    def __init__(self, primary: TushareProvider, fallback: AKShareProvider):
+        self.primary = primary
+        self.fallback = fallback
+
+    async def get_daily_bars(self, code: str, start_date: date, end_date: date) -> list[Bar]:
+        try:
+            result = await self.primary.get_daily_bars(code, start_date, end_date)
+            if result:
+                return result
+        except Exception as e:
+            logger.warning(f"Primary source (Tushare) failed for daily_bars {code}: {e}")
+        return await self.fallback.get_daily_bars(code, start_date, end_date)
+
+    async def get_realtime_quote(self, codes: list[str]) -> list[Quote]:
+        try:
+            result = await self.primary.get_realtime_quote(codes)
+            if result:
+                return result
+        except Exception as e:
+            logger.warning(f"Primary source (Tushare) failed for realtime_quote: {e}")
+        return await self.fallback.get_realtime_quote(codes)
+
+    async def get_stock_list(self) -> list[StockInfo]:
+        try:
+            result = await self.primary.get_stock_list()
+            if result:
+                return result
+        except Exception as e:
+            logger.warning(f"Primary source (Tushare) failed for stock_list: {e}")
+        return await self.fallback.get_stock_list()
+
+    async def get_dragon_tiger_list(self, trade_date: date) -> list[DragonTigerItem]:
+        try:
+            result = await self.primary.get_dragon_tiger_list(trade_date)
+            if result:
+                return result
+        except Exception as e:
+            logger.warning(f"Primary source (Tushare) failed for dragon_tiger_list {trade_date}: {e}")
+        return await self.fallback.get_dragon_tiger_list(trade_date)
+
+    async def get_limit_up_board(self, trade_date: date) -> list[LimitUpItem]:
+        try:
+            result = await self.primary.get_limit_up_board(trade_date)
+            if result:
+                return result
+        except Exception as e:
+            logger.warning(f"Primary source (Tushare) failed for limit_up_board {trade_date}: {e}")
+        return await self.fallback.get_limit_up_board(trade_date)
+
+    async def get_daily_news(self, trade_date: date) -> list[NewsItem]:
+        # Tushare has no news API, go straight to AKShare
+        return await self.fallback.get_daily_news(trade_date)
+
+
+def create_data_facade() -> DataFacade:
+    return DataFacade(primary=TushareProvider(), fallback=AKShareProvider())

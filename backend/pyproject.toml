@@ -1,0 +1,79 @@
+[project]
+name = "trade-bot-backend"
+version = "0.1.0"
+description = "A股量化分析系统后端"
+requires-python = ">=3.12"
+dependencies = [
+    # Web framework
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "python-multipart>=0.0.18",
+
+    # Database
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
+
+    # Redis & Task Queue
+    "redis>=5.2.0",
+    "celery[redis]>=5.4.0",
+
+    # Data validation & settings
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+
+    # Auth
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+
+    # Data sources
+    "tushare>=1.4.0",
+    "akshare>=1.15.0",
+
+    # Quant analysis
+    "pandas>=2.2.0",
+    "numpy>=2.1.0",
+    "ta>=0.11.0",
+    "vectorbt>=0.26.0",
+
+    # Bot SDK
+    "lark-oapi>=1.4.0",
+
+    # Admin UI
+    "sqladmin>=0.20.0",
+
+    # HTTP client
+    "httpx>=0.28.0",
+
+    # Utils
+    "loguru>=0.7.0",
+    "tenacity>=9.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "httpx>=0.28.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
