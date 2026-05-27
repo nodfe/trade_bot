@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Block direct pushes to main. Use PRs instead.
+#
+# Bypass only for real emergencies:
+#   git push --no-verify
+
+set -euo pipefail
+
+protected_branch="main"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    "refs/heads/$protected_branch")
+      echo ""
+      echo "direct push to '$protected_branch' blocked by .githooks/pre-push"
+      echo ""
+      echo "open a PR instead:"
+      echo "  gh pr create --base $protected_branch --head \$(git branch --show-current)"
+      echo ""
+      echo "real emergency override:"
+      echo "  git push --no-verify"
+      echo ""
+      exit 1
+      ;;
+  esac
+done
+
+exit 0
