@@ -27,7 +27,11 @@ class TushareProvider(MarketDataSource):
     async def get_daily_bars(self, code: str, start_date: date, end_date: date) -> list[Bar]:
         pro = self._ensure_client()
         ts_code = self._to_ts_code(code)
-        df = pro.daily(ts_code=ts_code, start_date=start_date.strftime("%Y%m%d"), end_date=end_date.strftime("%Y%m%d"))
+        df = pro.daily(
+            ts_code=ts_code,
+            start_date=start_date.strftime("%Y%m%d"),
+            end_date=end_date.strftime("%Y%m%d"),
+        )
         if df is None or df.empty:
             return []
         return [
@@ -50,7 +54,11 @@ class TushareProvider(MarketDataSource):
 
     async def get_stock_list(self) -> list[StockInfo]:
         pro = self._ensure_client()
-        df = pro.stock_basic(exchange="", list_status="L", fields="ts_code,symbol,name,area,industry,list_date")
+        df = pro.stock_basic(
+            exchange="",
+            list_status="L",
+            fields="ts_code,symbol,name,area,industry,list_date",
+        )
         if df is None or df.empty:
             return []
         return [
@@ -59,7 +67,11 @@ class TushareProvider(MarketDataSource):
                 name=str(row["name"]),
                 industry=str(row.get("industry", "")) or None,
                 market="SH" if row["ts_code"].endswith(".SH") else "SZ",
-                list_date=date.fromisoformat(str(row["list_date"])) if row.get("list_date") else None,
+                list_date=(
+                    date.fromisoformat(str(row["list_date"]))
+                    if row.get("list_date")
+                    else None
+                ),
             )
             for _, row in df.iterrows()
         ]
@@ -105,7 +117,11 @@ class TushareProvider(MarketDataSource):
                     change_pct=float(row.get("pct_change", 0)),
                     limit_up_time=None,
                     open_times=int(row.get("open_times", 0)) if row.get("open_times") else None,
-                    turnover=float(row.get("turnover_ratio", 0)) if row.get("turnover_ratio") else None,
+                    turnover=(
+                        float(row.get("turnover_ratio", 0))
+                        if row.get("turnover_ratio")
+                        else None
+                    ),
                     reason=str(row.get("limit_times", "")) or None,
                 )
                 for _, row in df.iterrows()

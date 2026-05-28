@@ -1,17 +1,21 @@
 services:
   backend:
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    environment:
-      - APP_ENV=development
-      - APP_DEBUG=true
+    volumes:
+      - ./backend:/app
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 5000 --reload
 
   celery-worker:
-    command: celery -A celery_app worker --loglevel=debug --concurrency=2
+    volumes:
+      - ./backend:/app
+    command: uv run celery -A celery_app worker --loglevel=info --concurrency=2
 
   celery-beat:
-    command: celery -A celery_app beat --loglevel=debug
+    volumes:
+      - ./backend:/app
+    command: uv run celery -A celery_app beat --loglevel=info
 
   admin:
-    command: pnpm dev
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    command: sh -c "corepack enable && pnpm install && pnpm --filter @quant/admin dev -- --hostname 0.0.0.0 --port 5001"

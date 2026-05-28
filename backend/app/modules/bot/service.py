@@ -9,7 +9,7 @@ from app.modules.bot.adapters.base import BotAdapter, BotMessage, CardAction, Ca
 from app.modules.bot.adapters.feishu.adapter import FeishuAdapter
 from app.modules.bot.adapters.feishu.card_builder import FeishuCardBuilder
 from app.modules.bot.commands.analyze import AnalyzeCommand
-from app.modules.bot.commands.base import CommandHandler, CommandRouter
+from app.modules.bot.commands.base import CommandRouter
 from app.modules.bot.commands.help import HelpCommand
 from app.modules.bot.commands.lhb import LhbCommand
 from app.modules.bot.commands.news import NewsCommand
@@ -107,11 +107,6 @@ class BotService:
         # Build the middleware chain: last middleware calls the command dispatcher
         handler: NextHandler = self._dispatch_command
         for mw in reversed(self.middlewares):
-            prev_handler = handler
-
-            async def make_chain(m: BotMiddleware, h: NextHandler) -> None:
-                pass
-
             # Capture loop variable correctly
             handler = self._wrap_middleware(mw, handler)
 
@@ -161,7 +156,11 @@ class BotService:
             # Send a loading card, then submit a Celery task (MVP: inline)
             name = code  # Will be resolved when data returns
             loading_card = FeishuCardBuilder.analysis_loading_card(code, name)
-            card_id = await adapter.send_card(action.card_token, loading_card) if not action.card_token else None
+            card_id = (
+                await adapter.send_card(action.card_token, loading_card)
+                if not action.card_token
+                else None
+            )
 
             if card_id is None and action.card_token:
                 # Update the existing card with loading state

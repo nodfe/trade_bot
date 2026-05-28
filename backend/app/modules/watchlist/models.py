@@ -16,13 +16,18 @@ class Watchlist(Base):
     auto_refresh: Mapped[str] = mapped_column(String(10), default="manual")
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    last_refreshed_at: Mapped[datetime | None] = mapped_column(DateTime)
 
 
 class WatchlistItem(Base):
     __tablename__ = "watchlist_items"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    watchlist_id: Mapped[str] = mapped_column(ForeignKey("watchlists.id", ondelete="CASCADE"), index=True)
+    watchlist_id: Mapped[str] = mapped_column(
+        ForeignKey("watchlists.id", ondelete="CASCADE"),
+        index=True,
+    )
     stock_code: Mapped[str] = mapped_column(String(10), index=True)
     stock_name: Mapped[str] = mapped_column(String(50))
     match_reason: Mapped[str | None] = mapped_column(Text)

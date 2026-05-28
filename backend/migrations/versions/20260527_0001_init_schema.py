@@ -5,9 +5,8 @@ Revises:
 Create Date: 2026-05-27 19:40:00
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "20260527_0001"
 down_revision = None
@@ -105,7 +104,12 @@ def upgrade() -> None:
     op.create_table(
         "watchlist_items",
         sa.Column("id", sa.String(length=64), primary_key=True),
-        sa.Column("watchlist_id", sa.String(length=64), sa.ForeignKey("watchlists.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "watchlist_id",
+            sa.String(length=64),
+            sa.ForeignKey("watchlists.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("stock_code", sa.String(length=10), nullable=False),
         sa.Column("stock_name", sa.String(length=50), nullable=False),
         sa.Column("match_reason", sa.Text(), nullable=True),
@@ -114,7 +118,12 @@ def upgrade() -> None:
     )
     op.create_index("ix_watchlist_items_watchlist_id", "watchlist_items", ["watchlist_id"])
     op.create_index("ix_watchlist_items_stock_code", "watchlist_items", ["stock_code"])
-    op.create_index("ix_watchlist_item_unique", "watchlist_items", ["watchlist_id", "stock_code"], unique=True)
+    op.create_index(
+        "ix_watchlist_item_unique",
+        "watchlist_items",
+        ["watchlist_id", "stock_code"],
+        unique=True,
+    )
 
 
 def downgrade() -> None:

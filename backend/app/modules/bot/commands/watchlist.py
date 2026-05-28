@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from loguru import logger
@@ -45,6 +46,9 @@ class WatchlistCommand(CommandHandler):
                         "name": item.name,
                         "source": item.source_screen_type or "manual",
                         "count": len(item.items),
+                        "auto_refresh": item.auto_refresh,
+                        "last_refreshed_at": self._format_timestamp(item.last_refreshed_at),
+                        "params": self._summarize_params(item.screen_params_json),
                     }
                     for item in top_watchlists
                 ],
@@ -52,3 +56,33 @@ class WatchlistCommand(CommandHandler):
         except Exception as e:
             logger.error(f"WatchlistCommand error: {e}")
             return {"text": "读取候选池失败，请稍后重试"}
+
+    @staticmethod
+    def _format_timestamp(value: datetime | None) -> str:
+        if value is None:
+            return "未刷新"
+        return value.strftime("%m-%d %H:%M")
+
+    @staticmethod
+    def _summarize_params(screen_params_json: str | None) -> str:
+        if not screen_params_json:
+            return "手动候选池"
+
+        try:
+            import json
+
+            parsed = json.loads(screen_params_json)
+        except Exception:
+            return "参数不可读"
+
+        parts: list[str] = []
+        if parsed.get("limit") is not None:
+            parts.append(f"数量 {parsed['limit']}")
+        if parsed.get("min_return_20d_pct") is not None:
+            parts.append(f"20日>={parsed['min_return_20d_pct']}%")
+        if parsed.get("min_volume_ratio") is not None:
+            parts.append(f"量比>={parsed['min_volume_ratio']}x")
+        if parsed.get("max_return_5d_pct") is not None:
+            parts.append(f"5日<={parsed['max_return_5d_pct']}%")
+
+        return " / ".join(parts) if parts else "已保存筛选参数"

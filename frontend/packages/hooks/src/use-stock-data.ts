@@ -94,15 +94,20 @@ export interface Watchlist {
   id: string;
   name: string;
   source_screen_type: string | null;
+  screen_params_json: string | null;
   auto_refresh: string;
   notes: string | null;
   created_at: string;
+  updated_at: string;
+  last_refreshed_at: string | null;
   items: WatchlistItem[];
 }
 
 export interface CreateWatchlistPayload {
   name: string;
   source_screen_type?: string;
+  screen_params_json?: string;
+  auto_refresh?: string;
   notes?: string;
   items: Array<{
     stock_code: string;

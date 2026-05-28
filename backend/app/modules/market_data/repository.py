@@ -63,7 +63,11 @@ class MarketDataRepository:
         self, code: str, start_date: date | None = None, end_date: date | None = None
     ) -> list[DailyBar]:
         async with async_session_factory() as session:
-            stmt = select(DailyBar).where(DailyBar.code == code).order_by(DailyBar.trade_date.desc())
+            stmt = (
+                select(DailyBar)
+                .where(DailyBar.code == code)
+                .order_by(DailyBar.trade_date.desc())
+            )
             if start_date:
                 stmt = stmt.where(DailyBar.trade_date >= start_date)
             if end_date:
@@ -92,7 +96,7 @@ class MarketDataRepository:
             result = await session.execute(
                 select(exists().where(DragonTigerList.trade_date == trade_date))
             )
-            return result.scalar()
+            return bool(result.scalar())
 
     async def get_dragon_tiger_list(self, trade_date: date) -> list[DragonTigerList]:
         async with async_session_factory() as session:
@@ -117,7 +121,7 @@ class MarketDataRepository:
             result = await session.execute(
                 select(exists().where(LimitUpBoard.trade_date == trade_date))
             )
-            return result.scalar()
+            return bool(result.scalar())
 
     async def get_limit_up_board(self, trade_date: date) -> list[LimitUpBoard]:
         async with async_session_factory() as session:
@@ -142,7 +146,7 @@ class MarketDataRepository:
             result = await session.execute(
                 select(exists().where(DailyNews.trade_date == trade_date))
             )
-            return result.scalar()
+            return bool(result.scalar())
 
     async def get_daily_news(self, trade_date: date, limit: int = 50) -> list[DailyNews]:
         async with async_session_factory() as session:

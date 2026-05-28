@@ -39,7 +39,11 @@ class AnalyzeCommand(CommandHandler):
 
             name = stock.name if stock else code
 
-            score = self._score_analysis(analysis.trend_bias, analysis.rsi14, analysis.macd_histogram)
+            score = self._score_analysis(
+                analysis.trend_bias,
+                analysis.rsi14,
+                analysis.macd_histogram,
+            )
             return {
                 "card_type": "analysis_result",
                 "code": code,

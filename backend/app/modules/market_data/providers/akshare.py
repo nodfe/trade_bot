@@ -3,7 +3,15 @@ from datetime import date
 import akshare as ak
 from loguru import logger
 
-from app.modules.market_data.providers.base import Bar, MarketDataSource, Quote, StockInfo, DragonTigerItem, LimitUpItem, NewsItem
+from app.modules.market_data.providers.base import (
+    Bar,
+    DragonTigerItem,
+    LimitUpItem,
+    MarketDataSource,
+    NewsItem,
+    Quote,
+    StockInfo,
+)
 
 
 class AKShareProvider(MarketDataSource):

@@ -124,7 +124,10 @@ def test_stock_analysis_endpoint(monkeypatch):
             return_20d_pct=8.64,
             volume_ratio_5d=1.18,
             trend_bias="bullish",
-            summary="短中期趋势偏强，较 MA5 +1.31%，较 MA20 +4.81%，近20日 +8.64%，量比(5日) 1.18x。",
+            summary=(
+                "短中期趋势偏强，较 MA5 +1.31%，较 MA20 +4.81%，"
+                "近20日 +8.64%，量比(5日) 1.18x。"
+            ),
             signals=[
                 {"name": "趋势结构", "detail": "均线与阶段收益共振偏强"},
                 {"name": "RSI", "detail": "RSI 位于中性区，动量平衡"},
@@ -151,7 +154,10 @@ def test_stock_analysis_endpoint(monkeypatch):
         "return_20d_pct": 8.64,
         "volume_ratio_5d": 1.18,
         "trend_bias": "bullish",
-        "summary": "短中期趋势偏强，较 MA5 +1.31%，较 MA20 +4.81%，近20日 +8.64%，量比(5日) 1.18x。",
+        "summary": (
+            "短中期趋势偏强，较 MA5 +1.31%，较 MA20 +4.81%，"
+            "近20日 +8.64%，量比(5日) 1.18x。"
+        ),
         "signals": [
             {"name": "趋势结构", "detail": "均线与阶段收益共振偏强"},
             {"name": "RSI", "detail": "RSI 位于中性区，动量平衡"},

@@ -1,10 +1,11 @@
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from app.core.logging import logger as _  # noqa: F401 - init logging
+import app.core.logging as app_logging  # noqa: F401 - init logging
 from app.modules.bot.router import router as bot_router
 from app.modules.bot.service import BotService
 from app.modules.market_data.router import router as market_router
@@ -14,7 +15,7 @@ _bot_service: BotService | None = None
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     global _bot_service
     logger.info("Starting trade_bot backend...")
     _bot_service = BotService()

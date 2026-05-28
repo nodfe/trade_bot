@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
@@ -27,11 +27,11 @@ class ScreenCommand(CommandHandler):
         params = self._parse_params(parts[1:])
 
         try:
-            from app.modules.market_data.service import MarketDataService
             from app.modules.market_data.schemas import StockScreenParams
+            from app.modules.market_data.service import MarketDataService
 
             svc = MarketDataService()
-            result = await svc.screen_stocks(screen_type, StockScreenParams(**params))
+            result = await svc.screen_stocks(screen_type, StockScreenParams(**cast(Any, params)))
 
             if not result.items:
                 return {"text": f"筛选器 {screen_type} 当前暂无结果，请先确认行情数据已同步"}
@@ -45,7 +45,10 @@ class ScreenCommand(CommandHandler):
             return {
                 "card_type": "screen_result",
                 "title": title,
-                "message": f"共命中 {result.total} 只，以下展示前 {len(result.items)} 只。参数: {params or {'limit': 5}}",
+                "message": (
+                    f"共命中 {result.total} 只，以下展示前 {len(result.items)} 只。"
+                    f"参数: {params or {'limit': 5}}"
+                ),
                 "items": [
                     {
                         "symbol": item.symbol,
@@ -70,6 +73,11 @@ class ScreenCommand(CommandHandler):
             key, raw_value = token.split("=", 1)
             if key == "limit":
                 params[key] = int(raw_value)
-            elif key in {"min_return_20d_pct", "min_return_5d_pct", "min_volume_ratio", "max_return_5d_pct"}:
+            elif key in {
+                "min_return_20d_pct",
+                "min_return_5d_pct",
+                "min_volume_ratio",
+                "max_return_5d_pct",
+            }:
                 params[key] = float(raw_value)
         return params

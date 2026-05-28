@@ -2,16 +2,16 @@
 
 # Start all services
 dev:
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 
 # Start backend dependencies only (DB + Redis) and run FastAPI dev server
 dev-backend:
 	docker compose up -d db redis
-	cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 5000
 
 # Start frontend dev server
 dev-frontend:
-	cd frontend && pnpm dev
+	cd frontend/apps/admin && pnpm exec next dev --turbopack --hostname 0.0.0.0 --port 5001
 
 # Run database migrations
 migrate:
@@ -27,7 +27,7 @@ test:
 
 # Sync market data manually
 sync-data:
-	curl -X POST http://localhost:8000/api/v1/market/sync
+	curl -X POST http://localhost:5000/api/v1/market/sync
 
 # Lint all code
 lint:

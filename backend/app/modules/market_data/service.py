@@ -1,13 +1,13 @@
 from datetime import UTC, date, datetime, timedelta
 
-from loguru import logger
 import pandas as pd
+from loguru import logger
 from ta.momentum import RSIIndicator
 from ta.trend import MACD
 
 from app.modules.market_data.models import DailyBar, DailyNews, DragonTigerList, LimitUpBoard, Stock
-from app.modules.market_data.providers.facade import DataFacade, create_data_facade
 from app.modules.market_data.providers.base import Quote
+from app.modules.market_data.providers.facade import DataFacade, create_data_facade
 from app.modules.market_data.repository import MarketDataRepository
 from app.modules.market_data.schemas import (
     MarketOverviewOut,
@@ -37,7 +37,11 @@ class MarketDataService:
         return None
 
     async def get_stock_kline(
-        self, code: str, start_date: date | None = None, end_date: date | None = None, limit: int = 120
+        self,
+        code: str,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        limit: int = 120,
     ) -> list[DailyBar]:
         bars = await self.get_daily_bars(code, start_date, end_date)
         bars_sorted = sorted(bars, key=lambda bar: bar.trade_date)
@@ -60,8 +64,16 @@ class MarketDataService:
 
         price_vs_ma5_pct = ((latest_close - ma5) / ma5 * 100) if ma5 else None
         price_vs_ma20_pct = ((latest_close - ma20) / ma20 * 100) if ma20 else None
-        return_5d_pct = ((latest_close - closes[-5]) / closes[-5] * 100) if len(closes) >= 5 else None
-        return_20d_pct = ((latest_close - closes[0]) / closes[0] * 100) if len(closes) >= 20 else None
+        return_5d_pct = (
+            ((latest_close - closes[-5]) / closes[-5] * 100)
+            if len(closes) >= 5
+            else None
+        )
+        return_20d_pct = (
+            ((latest_close - closes[0]) / closes[0] * 100)
+            if len(closes) >= 20
+            else None
+        )
 
         latest_volume = volumes[-1]
         avg_volume_5d = sum(volumes[-5:]) / 5 if len(volumes) >= 5 else None
@@ -117,7 +129,9 @@ class MarketDataService:
 
         latest_dragon_tiger_count = 0
         if latest_dragon_tiger_date:
-            latest_dragon_tiger_count = len(await self.repo.get_dragon_tiger_list(latest_dragon_tiger_date))
+            latest_dragon_tiger_count = len(
+                await self.repo.get_dragon_tiger_list(latest_dragon_tiger_date)
+            )
 
         latest_limit_up_count = 0
         if latest_limit_up_date:
@@ -155,7 +169,8 @@ class MarketDataService:
         dragon_tiger_map: dict[str, DragonTigerList] = {}
         if latest_dragon_tiger_date:
             dragon_tiger_map = {
-                item.code: item for item in await self.repo.get_dragon_tiger_list(latest_dragon_tiger_date)
+                item.code: item
+                for item in await self.repo.get_dragon_tiger_list(latest_dragon_tiger_date)
             }
 
         limit_up_map: dict[str, LimitUpBoard] = {}
@@ -226,8 +241,16 @@ class MarketDataService:
         price_vs_ma20_pct: float | None,
         return_20d_pct: float | None,
     ) -> str:
-        bullish = (price_vs_ma5_pct or 0) > 0 and (price_vs_ma20_pct or 0) > 0 and (return_20d_pct or 0) > 0
-        bearish = (price_vs_ma5_pct or 0) < 0 and (price_vs_ma20_pct or 0) < 0 and (return_20d_pct or 0) < 0
+        bullish = (
+            (price_vs_ma5_pct or 0) > 0
+            and (price_vs_ma20_pct or 0) > 0
+            and (return_20d_pct or 0) > 0
+        )
+        bearish = (
+            (price_vs_ma5_pct or 0) < 0
+            and (price_vs_ma20_pct or 0) < 0
+            and (return_20d_pct or 0) < 0
+        )
 
         if bullish:
             return "bullish"
@@ -251,17 +274,42 @@ class MarketDataService:
             "neutral": "趋势仍在整理区间",
         }[trend_bias]
 
-        ma5_text = f"较 MA5 {price_vs_ma5_pct:+.2f}%" if price_vs_ma5_pct is not None else "MA5 数据不足"
-        ma20_text = f"较 MA20 {price_vs_ma20_pct:+.2f}%" if price_vs_ma20_pct is not None else "MA20 数据不足"
-        return_text = f"近20日 {return_20d_pct:+.2f}%" if return_20d_pct is not None else "20日收益待补充"
-        volume_text = f"量比(5日) {volume_ratio_5d:.2f}x" if volume_ratio_5d is not None else "量能数据不足"
+        ma5_text = (
+            f"较 MA5 {price_vs_ma5_pct:+.2f}%"
+            if price_vs_ma5_pct is not None
+            else "MA5 数据不足"
+        )
+        ma20_text = (
+            f"较 MA20 {price_vs_ma20_pct:+.2f}%"
+            if price_vs_ma20_pct is not None
+            else "MA20 数据不足"
+        )
+        return_text = (
+            f"近20日 {return_20d_pct:+.2f}%"
+            if return_20d_pct is not None
+            else "20日收益待补充"
+        )
+        volume_text = (
+            f"量比(5日) {volume_ratio_5d:.2f}x"
+            if volume_ratio_5d is not None
+            else "量能数据不足"
+        )
         rsi_text = f"RSI14 {rsi14:.1f}" if rsi14 is not None else "RSI 数据不足"
-        macd_text = f"MACD柱 {'正值' if macd_histogram >= 0 else '负值'}" if macd_histogram is not None else "MACD 数据不足"
+        macd_text = (
+            f"MACD柱 {'正值' if macd_histogram >= 0 else '负值'}"
+            if macd_histogram is not None
+            else "MACD 数据不足"
+        )
 
-        return f"{trend_text}，{ma5_text}，{ma20_text}，{return_text}，{volume_text}，{rsi_text}，{macd_text}。"
+        return (
+            f"{trend_text}，{ma5_text}，{ma20_text}，{return_text}，"
+            f"{volume_text}，{rsi_text}，{macd_text}。"
+        )
 
     @staticmethod
-    def _calculate_ta_metrics(closes: list[float]) -> tuple[float | None, float | None, float | None, float | None]:
+    def _calculate_ta_metrics(
+        closes: list[float],
+    ) -> tuple[float | None, float | None, float | None, float | None]:
         if len(closes) < 14:
             return None, None, None, None
 
@@ -310,7 +358,11 @@ class MarketDataService:
         signals.append({"name": "趋势结构", "detail": trend_detail})
 
         if ma5 is not None and ma20 is not None:
-            ma_detail = "MA5 位于 MA20 上方，短线领先" if ma5 >= ma20 else "MA5 位于 MA20 下方，短线承压"
+            ma_detail = (
+                "MA5 位于 MA20 上方，短线领先"
+                if ma5 >= ma20
+                else "MA5 位于 MA20 下方，短线承压"
+            )
             signals.append({"name": "均线关系", "detail": ma_detail})
 
         if rsi14 is not None:
@@ -323,7 +375,11 @@ class MarketDataService:
             signals.append({"name": "RSI", "detail": rsi_detail})
 
         if macd_histogram is not None:
-            macd_detail = "MACD 柱体为正，动能向上" if macd_histogram >= 0 else "MACD 柱体为负，动能向下"
+            macd_detail = (
+                "MACD 柱体为正，动能向上"
+                if macd_histogram >= 0
+                else "MACD 柱体为负，动能向下"
+            )
             signals.append({"name": "MACD", "detail": macd_detail})
 
         if return_5d_pct is not None and return_20d_pct is not None:
@@ -350,7 +406,11 @@ class MarketDataService:
         params: StockScreenParams,
     ) -> str | None:
         if screen_type == "strong_uptrend":
-            min_return_20d_pct = params.min_return_20d_pct if params.min_return_20d_pct is not None else 5
+            min_return_20d_pct = (
+                params.min_return_20d_pct
+                if params.min_return_20d_pct is not None
+                else 5
+            )
             if (
                 analysis.trend_bias == "bullish"
                 and (analysis.return_20d_pct or 0) >= min_return_20d_pct
@@ -360,8 +420,12 @@ class MarketDataService:
             return None
 
         if screen_type == "volume_breakout":
-            min_volume_ratio = params.min_volume_ratio if params.min_volume_ratio is not None else 1.3
-            min_return_5d_pct = params.min_return_5d_pct if params.min_return_5d_pct is not None else 0
+            min_volume_ratio = (
+                params.min_volume_ratio if params.min_volume_ratio is not None else 1.3
+            )
+            min_return_5d_pct = (
+                params.min_return_5d_pct if params.min_return_5d_pct is not None else 0
+            )
             if (
                 (analysis.volume_ratio_5d or 0) >= min_volume_ratio
                 and (analysis.return_5d_pct or 0) > min_return_5d_pct
@@ -371,7 +435,9 @@ class MarketDataService:
             return None
 
         if screen_type == "pullback_watch":
-            max_return_5d_pct = params.max_return_5d_pct if params.max_return_5d_pct is not None else 1
+            max_return_5d_pct = (
+                params.max_return_5d_pct if params.max_return_5d_pct is not None else 1
+            )
             if (
                 analysis.trend_bias == "bullish"
                 and (analysis.price_vs_ma20_pct or 0) > 0
@@ -383,7 +449,10 @@ class MarketDataService:
         return None
 
     @staticmethod
-    def _sort_screen_matches(screen_type: str, matches: list[StockScreenItemOut]) -> list[StockScreenItemOut]:
+    def _sort_screen_matches(
+        screen_type: str,
+        matches: list[StockScreenItemOut],
+    ) -> list[StockScreenItemOut]:
         if screen_type == "volume_breakout":
             return sorted(
                 matches,
@@ -480,7 +549,10 @@ class MarketDataService:
             trade_date = date.today()
         if await self.repo.has_dragon_tiger_data(trade_date):
             existing = await self.repo.get_dragon_tiger_list(trade_date)
-            return SyncResult(synced=0, message=f"{trade_date} 龙虎榜数据已存在，共 {len(existing)} 条记录")
+            return SyncResult(
+                synced=0,
+                message=f"{trade_date} 龙虎榜数据已存在，共 {len(existing)} 条记录",
+            )
         dtos = await self.facade.get_dragon_tiger_list(trade_date)
         if not dtos:
             return SyncResult(synced=0, message=f"{trade_date} 龙虎榜无数据")
@@ -512,7 +584,10 @@ class MarketDataService:
             trade_date = date.today()
         if await self.repo.has_limit_up_data(trade_date):
             existing = await self.repo.get_limit_up_board(trade_date)
-            return SyncResult(synced=0, message=f"{trade_date} 涨停板数据已存在，共 {len(existing)} 条记录")
+            return SyncResult(
+                synced=0,
+                message=f"{trade_date} 涨停板数据已存在，共 {len(existing)} 条记录",
+            )
         dtos = await self.facade.get_limit_up_board(trade_date)
         if not dtos:
             return SyncResult(synced=0, message=f"{trade_date} 涨停板无数据")
@@ -543,7 +618,6 @@ class MarketDataService:
         if not trade_date:
             trade_date = date.today()
         if await self.repo.has_news_data(trade_date):
-            existing = await self.repo.get_daily_news(trade_date, limit=1)
             return SyncResult(synced=0, message=f"{trade_date} 新闻数据已存在")
         dtos = await self.facade.get_daily_news(trade_date)
         if not dtos:

@@ -26,7 +26,7 @@ COPY --from=builder /app/apps/admin/public ./apps/admin/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/admin/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/admin/.next/static ./apps/admin/.next/static
 USER nextjs
-EXPOSE 3000
-ENV PORT=3000
+EXPOSE 5001
+ENV PORT=5001
 ENV HOSTNAME="0.0.0.0"
 CMD ["node", "apps/admin/server.js"]

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
-from typing import Any, Callable, Coroutine
+from typing import Any
 
 
 @dataclass
@@ -23,7 +24,7 @@ class CardAction:
     action_type: str  # e.g. "button"
     action_value: str  # value payload from the button
     card_token: str  # token for updating this card in-place
-    raw: dict[str, Any] = field(default=dict)
+    raw: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

@@ -178,7 +178,11 @@ class FeishuAdapter(BotAdapter):
             bot_msg = BotMessage(
                 message_id=msg.message_id,
                 chat_id=msg.chat_id,
-                user_id=sender.sender_id.open_id if hasattr(sender.sender_id, "open_id") else str(sender.sender_id),
+                user_id=(
+                    sender.sender_id.open_id
+                    if hasattr(sender.sender_id, "open_id")
+                    else str(sender.sender_id)
+                ),
                 text=text.strip(),
                 raw={
                     "msg_type": msg.msg_type,

@@ -5,7 +5,7 @@ type WindowWithApiBase = Window & {
 const API_BASE_URL =
   typeof window !== "undefined"
     ? (window as WindowWithApiBase).__API_BASE_URL__ ?? "/api/v1"
-    : process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+    : process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api/v1";
 
 interface RequestOptions extends Omit<RequestInit, "body"> {
   params?: Record<string, string | number | boolean | undefined>;

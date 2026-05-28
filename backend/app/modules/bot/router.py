@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Request
-from loguru import logger
 
 from app.modules.bot.adapters.feishu.auth import FeishuAuth
 from app.modules.bot.service import BotService
@@ -45,7 +44,6 @@ async def feishu_webhook(request: Request) -> dict[str, Any]:
         return feishu_auth.handle_url_verification(challenge, token)
 
     # Handle event callback
-    schema = payload.get("schema", "")
     header = payload.get("header", {})
     event_type = header.get("event_type", "")
 

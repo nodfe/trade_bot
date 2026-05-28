@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Coroutine
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 from app.modules.bot.adapters.base import BotMessage
-
 
 # Middleware chain: each middleware calls next_handler to pass control downstream
 NextHandler = Callable[[BotMessage], Coroutine[Any, Any, None]]

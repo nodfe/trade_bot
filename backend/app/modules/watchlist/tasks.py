@@ -6,8 +6,8 @@ from loguru import logger
 from app.modules.watchlist.service import WatchlistService
 
 
-@shared_task
-def refresh_watchlist_task(watchlist_id: str):
+@shared_task  # type: ignore[untyped-decorator]
+def refresh_watchlist_task(watchlist_id: str) -> int:
     svc = WatchlistService()
     loop = asyncio.get_event_loop()
     refreshed = loop.run_until_complete(svc.refresh_watchlist(watchlist_id))
@@ -19,8 +19,8 @@ def refresh_watchlist_task(watchlist_id: str):
     return len(refreshed.items)
 
 
-@shared_task
-def refresh_auto_watchlists_task():
+@shared_task  # type: ignore[untyped-decorator]
+def refresh_auto_watchlists_task() -> int:
     svc = WatchlistService()
     loop = asyncio.get_event_loop()
     refreshed = loop.run_until_complete(svc.refresh_auto_watchlists())

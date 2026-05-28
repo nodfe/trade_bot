@@ -3,7 +3,14 @@ from datetime import date
 from loguru import logger
 
 from app.modules.market_data.providers.akshare import AKShareProvider
-from app.modules.market_data.providers.base import Bar, MarketDataSource, Quote, StockInfo, DragonTigerItem, LimitUpItem, NewsItem
+from app.modules.market_data.providers.base import (
+    Bar,
+    DragonTigerItem,
+    LimitUpItem,
+    NewsItem,
+    Quote,
+    StockInfo,
+)
 from app.modules.market_data.providers.tushare import TushareProvider
 
 
@@ -47,7 +54,9 @@ class DataFacade:
             if result:
                 return result
         except Exception as e:
-            logger.warning(f"Primary source (Tushare) failed for dragon_tiger_list {trade_date}: {e}")
+            logger.warning(
+                f"Primary source (Tushare) failed for dragon_tiger_list {trade_date}: {e}"
+            )
         return await self.fallback.get_dragon_tiger_list(trade_date)
 
     async def get_limit_up_board(self, trade_date: date) -> list[LimitUpItem]:

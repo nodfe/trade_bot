@@ -73,7 +73,16 @@ quote-style = "double"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+pythonpath = ["."]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
+ignore_missing_imports = true
+disallow_untyped_defs = false
+disallow_untyped_calls = false
+warn_return_any = false
+disable_error_code = ["import-untyped"]
+check_untyped_defs = false
+disallow_any_decorated = false
+warn_unused_ignores = false

@@ -182,7 +182,7 @@ The repo's stated chart policy is sensible and should stay:
 ### 4.5 Local Infra
 
 - `Docker Compose` on `OrbStack`: keep as the default local stack
-- default service ports remain `8000`, `3000`, `5432`, `6379`
+- default service ports remain `5000`, `5001`, `5432`, `6379`
 - `8081` stays forbidden
 
 ## 5. Harness-Style Engineering Guardrails

@@ -27,8 +27,8 @@ trade_bot/
 
 ## Port Allocation
 
-- Backend (FastAPI): 8000
-- Frontend (Next.js): 3000
+- Backend (FastAPI): 5000
+- Frontend (Next.js): 5001
 - TimescaleDB: 5432
 - Redis: 6379
 

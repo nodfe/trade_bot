@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from app.modules.bot.adapters.base import CardMessage
@@ -94,7 +93,6 @@ class FeishuCardBuilder:
         for sig in signals:
             label = sig.get("name", "")
             value = sig.get("detail", "")
-            style = sig.get("style", "default")  # up/down/neutral
             card.add_field(label, value)
 
         card.add_separator()
@@ -114,9 +112,12 @@ class FeishuCardBuilder:
         card.add_text(message)
         card.add_separator()
         for item in top_items[:5]:
-            change_str = f"+{item['change_pct']:.2f}%" if item["change_pct"] >= 0 else f"{item['change_pct']:.2f}%"
+            change_pct = item["change_pct"]
+            change_str = f"+{change_pct:.2f}%" if change_pct >= 0 else f"{change_pct:.2f}%"
             net_buy_str = f"{item['net_buy'] / 1e8:.2f}亿" if item["net_buy"] else "N/A"
-            card.add_field(f"{item['name']}({item['code']})", f"涨幅{change_str} 净买入{net_buy_str}")
+            field_label = f"{item['name']}({item['code']})"
+            field_value = f"涨幅{change_str} 净买入{net_buy_str}"
+            card.add_field(field_label, field_value)
         if items_count > 5:
             card.add_note(f"共 {items_count} 条记录，仅展示前 5 条")
         return card
@@ -133,7 +134,9 @@ class FeishuCardBuilder:
         card.add_separator()
         for item in top_items[:5]:
             open_str = f"开板{item['open_times']}次" if item["open_times"] > 0 else "未开板"
-            card.add_field(f"{item['name']}({item['code']})", f"涨幅+{item['change_pct']:.2f}% {open_str}")
+            field_label = f"{item['name']}({item['code']})"
+            field_value = f"涨幅+{item['change_pct']:.2f}% {open_str}"
+            card.add_field(field_label, field_value)
         if items_count > 5:
             card.add_note(f"共 {items_count} 条记录，仅展示前 5 条")
         return card
@@ -186,7 +189,13 @@ class FeishuCardBuilder:
         card.add_text(message)
         card.add_separator()
         for item in items:
-            card.add_field(item["name"], f"来源 {item['source']} · 共 {item['count']} 只")
+            card.add_field(
+                item["name"],
+                (
+                    f"来源 {item['source']} · {item['auto_refresh']} · 共 {item['count']} 只\n"
+                    f"最近刷新 {item['last_refreshed_at']}\n{item['params']}"
+                ),
+            )
         return card
 
     # -- internal helpers --
@@ -217,7 +226,10 @@ class FeishuCardBuilder:
                     "fields": [
                         {
                             "is_short": True,
-                            "text": {"tag": "lark_md", "content": f"**{elem['label']}**\n{elem['value']}"},
+                            "text": {
+                                "tag": "lark_md",
+                                "content": f"**{elem['label']}**\n{elem['value']}",
+                            },
                         }
                     ],
                 })

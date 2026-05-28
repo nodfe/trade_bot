@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: tradebot
       POSTGRES_DB: tradebot
     ports:
-      - "5432:5432"
+      - "55432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -35,7 +35,7 @@ services:
       dockerfile: Dockerfile
     container_name: tradebot-backend
     ports:
-      - "8000:8000"
+      - "5000:5000"
     env_file:
       - .env
     depends_on:
@@ -45,7 +45,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 5000 --reload
 
   celery-worker:
     build:
@@ -85,11 +85,11 @@ services:
       dockerfile: Dockerfile
     container_name: tradebot-admin
     ports:
-      - "3000:3000"
+      - "5001:5001"
     depends_on:
       - backend
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:5000
 
 volumes:
   pgdata:

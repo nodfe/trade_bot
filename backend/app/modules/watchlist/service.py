@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from uuid import uuid4
 
+from app.core.exceptions import BadRequestError
 from app.modules.market_data.schemas import StockScreenParams
 from app.modules.market_data.service import MarketDataService
 from app.modules.watchlist.models import Watchlist, WatchlistItem
@@ -31,6 +33,9 @@ class WatchlistService:
         return self._to_schema(watchlist, items)
 
     async def create_watchlist(self, payload: WatchlistCreate) -> WatchlistOut:
+        if payload.auto_refresh != "manual" and not payload.screen_params_json:
+            raise BadRequestError("Auto-refresh watchlists require saved screen_params_json")
+
         watchlist = Watchlist(
             id=str(uuid4()),
             name=payload.name,
@@ -38,6 +43,8 @@ class WatchlistService:
             screen_params_json=payload.screen_params_json,
             auto_refresh=payload.auto_refresh,
             notes=payload.notes,
+            updated_at=datetime.now(),
+            last_refreshed_at=datetime.now() if payload.items else None,
         )
         items = [
             WatchlistItem(
@@ -63,7 +70,10 @@ class WatchlistService:
             return self._to_schema(watchlist, items)
 
         params = StockScreenParams(**json.loads(watchlist.screen_params_json))
-        screen_result = await self.market_data_service.screen_stocks(watchlist.source_screen_type, params)
+        screen_result = await self.market_data_service.screen_stocks(
+            watchlist.source_screen_type,
+            params,
+        )
         refreshed_items = [
             WatchlistItem(
                 id=str(uuid4()),
@@ -97,6 +107,8 @@ class WatchlistService:
             auto_refresh=watchlist.auto_refresh,
             notes=watchlist.notes,
             created_at=watchlist.created_at,
+            updated_at=watchlist.updated_at,
+            last_refreshed_at=watchlist.last_refreshed_at,
             items=[
                 WatchlistItemOut(
                     id=item.id,

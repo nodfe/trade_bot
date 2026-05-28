@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import select
 
 from app.core.database import async_session_factory
@@ -44,9 +46,18 @@ class WatchlistRepository:
 
     async def replace_watchlist_items(self, watchlist_id: str, items: list[WatchlistItem]) -> None:
         async with async_session_factory() as session:
-            existing = await session.execute(select(WatchlistItem).where(WatchlistItem.watchlist_id == watchlist_id))
+            existing = await session.execute(
+                select(WatchlistItem).where(WatchlistItem.watchlist_id == watchlist_id)
+            )
             for item in existing.scalars().all():
                 await session.delete(item)
             for item in items:
                 session.add(item)
+
+            watchlist = await session.get(Watchlist, watchlist_id)
+            if watchlist:
+                now = datetime.now()
+                watchlist.updated_at = now
+                watchlist.last_refreshed_at = now
+
             await session.commit()

@@ -36,4 +36,6 @@ class WatchlistOut(BaseModel):
     auto_refresh: str
     notes: str | None
     created_at: datetime
+    updated_at: datetime
+    last_refreshed_at: datetime | None
     items: list[WatchlistItemOut]
