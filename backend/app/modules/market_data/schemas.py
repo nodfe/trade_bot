@@ -40,6 +40,7 @@ class StockQuoteOut(BaseModel):
     open: float | None = None
     prev_close: float | None = None
     timestamp: datetime
+    is_delayed: bool = False
 
 
 class StockKlineOut(BaseModel):

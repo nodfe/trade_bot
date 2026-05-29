@@ -1,3 +1,4 @@
+import asyncio
 from datetime import date
 
 import tushare as ts
@@ -27,7 +28,8 @@ class TushareProvider(MarketDataSource):
     async def get_daily_bars(self, code: str, start_date: date, end_date: date) -> list[Bar]:
         pro = self._ensure_client()
         ts_code = self._to_ts_code(code)
-        df = pro.daily(
+        df = await asyncio.to_thread(
+            pro.daily,
             ts_code=ts_code,
             start_date=start_date.strftime("%Y%m%d"),
             end_date=end_date.strftime("%Y%m%d"),
@@ -59,7 +61,8 @@ class TushareProvider(MarketDataSource):
 
     async def get_stock_list(self) -> list[StockInfo]:
         pro = self._ensure_client()
-        df = pro.stock_basic(
+        df = await asyncio.to_thread(
+            pro.stock_basic,
             exchange="",
             list_status="L",
             fields="ts_code,symbol,name,area,industry,list_date",
@@ -85,7 +88,7 @@ class TushareProvider(MarketDataSource):
         try:
             pro = self._ensure_client()
             date_str = trade_date.strftime("%Y%m%d")
-            df = pro.top_list(trade_date=date_str)
+            df = await asyncio.to_thread(pro.top_list, trade_date=date_str)
             if df is None or df.empty:
                 return []
             return [
@@ -110,7 +113,7 @@ class TushareProvider(MarketDataSource):
         try:
             pro = self._ensure_client()
             date_str = trade_date.strftime("%Y%m%d")
-            df = pro.limit_list(trade_date=date_str)
+            df = await asyncio.to_thread(pro.limit_list, trade_date=date_str)
             if df is None or df.empty:
                 return []
             return [

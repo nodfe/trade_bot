@@ -29,6 +29,7 @@ export interface StockQuote {
   open: number | null;
   prev_close: number | null;
   timestamp: string;
+  is_delayed?: boolean;
 }
 
 export interface StockSummary {
