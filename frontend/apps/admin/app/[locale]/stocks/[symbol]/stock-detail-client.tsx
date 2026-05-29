@@ -44,17 +44,17 @@ export function StockDetailClient({ symbol, sourceContext }: StockDetailClientPr
   const tWatchlists = useTranslations("watchlists")
   
   const { data: stock } = useStockDetail(symbol)
-  const { data: quote } = useStockQuote(symbol, {
+  const { data: quote, isError: isQuoteError } = useStockQuote(symbol, {
     retry: false,
   })
-  const { data: analysis } = useStockAnalysis(symbol, {
+  const { data: analysis, isError: isAnalysisError } = useStockAnalysis(symbol, {
     retry: false,
   })
-  const { data: kline, isLoading: isKlineLoading } = useStockKline({
+  const { data: kline, isLoading: isKlineLoading, isError: isKlineError } = useStockKline({
     symbol,
     limit: 60,
   })
-  
+
   const watchlistId = sourceContext?.watchlistId
   const fromWatchlist = sourceContext?.from === "watchlist"
   const { data: watchlists } = useWatchlists({
@@ -67,9 +67,20 @@ export function StockDetailClient({ symbol, sourceContext }: StockDetailClientPr
   const previousBar = kline && kline.length > 1 ? kline[kline.length - 2] : null
   const barChange = latestBar && previousBar ? latestBar.close - previousBar.close : null
 
-  // Determine sentiment state for glows
-  const priceChange = quote?.change ?? barChange ?? 0
-  const isPriceUp = priceChange >= 0
+  // When the backend can't compute change_pct (e.g. delayed quote with no
+  // prev_close on the single-bar facade fallback), `quote.prev_close` is null
+  // and `quote.change` / `change_percent` come back as 0 — which would render
+  // as a misleading "+0.00%". Detect this and fall through to the bar-derived
+  // calculation, otherwise show "-" if we truly have nothing.
+  const hasQuoteChange = quote?.prev_close != null && quote?.change_percent != null
+  const hasBarChange =
+    barChange != null && previousBar?.close != null && previousBar.close !== 0
+  const priceChangePct = hasQuoteChange
+    ? quote!.change_percent!
+    : hasBarChange
+      ? (barChange! / previousBar!.close) * 100
+      : null
+  const isPriceUp = (priceChangePct ?? 0) >= 0
   const glowBorderClass = isPriceUp ? "stock-up-glow" : "stock-down-glow"
 
   return (
@@ -112,12 +123,28 @@ export function StockDetailClient({ symbol, sourceContext }: StockDetailClientPr
             isPriceUp ? "bg-stock-up/10 text-stock-up" : "bg-stock-down/10 text-stock-down"
           }`}>
             {isPriceUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {quote?.change_percent != null 
-              ? formatPercent(quote.change_percent) 
-              : formatPercent(((barChange ?? 0) / (previousBar?.close ?? 1)) * 100)}
+            {priceChangePct != null ? formatPercent(priceChangePct) : "—"}
           </div>
         </div>
       </div>
+
+      {(isQuoteError || isAnalysisError || isKlineError) && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
+          <Info className="h-4 w-4 shrink-0 mt-0.5" />
+          <div>
+            <div className="font-semibold">{t("detail.partial_load_title")}</div>
+            <div className="mt-0.5 text-muted-foreground">
+              {[
+                isQuoteError ? t("detail.partial_load_quote") : null,
+                isAnalysisError ? t("detail.partial_load_analysis") : null,
+                isKlineError ? t("detail.partial_load_kline") : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards Row */}
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">

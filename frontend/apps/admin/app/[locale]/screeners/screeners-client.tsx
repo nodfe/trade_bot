@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useTranslations } from "next-intl"
 import {
@@ -17,17 +17,14 @@ import { Check, Bookmark, Sliders, Newspaper, Flame, Activity } from "lucide-rea
 const screenOptions = [
   {
     value: "strong_uptrend",
-    label: "Strong Uptrend",
     glowClass: "stock-up-glow",
   },
   {
     value: "volume_breakout",
-    label: "Volume Breakout",
     glowClass: "stock-up-glow",
   },
   {
     value: "pullback_watch",
-    label: "Pullback Watch",
     glowClass: "stock-down-glow",
   },
 ] as const
@@ -37,6 +34,14 @@ function formatPercent(value: number | null | undefined) {
     return "-"
   }
   return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`
+}
+
+type ScreenParams = {
+  limit: number | undefined
+  min_return_20d_pct: number | undefined
+  min_return_5d_pct: number | undefined
+  min_volume_ratio: number | undefined
+  max_return_5d_pct: number | undefined
 }
 
 type ScreenersClientProps = {
@@ -50,7 +55,7 @@ export function ScreenersClient({ initialScreenType }: ScreenersClientProps) {
   const [saveStatus, setSaveStatus] = useState<string>("")
   const [watchlistName, setWatchlistName] = useState("")
   const [autoRefresh, setAutoRefresh] = useState("daily")
-  const [params, setParams] = useState({
+  const [params, setParams] = useState<ScreenParams>({
     limit: 12,
     min_return_20d_pct: 5,
     min_return_5d_pct: 0,
@@ -58,9 +63,35 @@ export function ScreenersClient({ initialScreenType }: ScreenersClientProps) {
     max_return_5d_pct: 15,
   })
 
-  const { data, isLoading, isError } = useStockScreen(screenType, params, {
-    retry: false,
-  })
+  const { data, isLoading, isError, isFetching, dataUpdatedAt } = useStockScreen(
+    screenType,
+    params,
+    {
+      retry: false,
+    },
+  )
+
+  // Track which (screenType, params) combination produced the currently
+  // displayed `data`. Save is only allowed when params match what was
+  // actually run — otherwise the saved watchlist would not match the
+  // displayed candidates.
+  const [lastRun, setLastRun] = useState<{
+    screenType: string
+    paramsKey: string
+  } | null>(null)
+
+  const paramsKey = useMemo(() => JSON.stringify(params), [params])
+
+  useEffect(() => {
+    if (data && !isFetching) {
+      setLastRun({ screenType, paramsKey })
+    }
+    // We intentionally only sync when the query settles successfully.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataUpdatedAt])
+
+  const paramsMatchLastRun =
+    !!lastRun && lastRun.screenType === screenType && lastRun.paramsKey === paramsKey
 
   useEffect(() => {
     if (!initialScreenType) return
@@ -71,16 +102,22 @@ export function ScreenersClient({ initialScreenType }: ScreenersClientProps) {
     }
   }, [initialScreenType])
 
-  const updateParam = (key: keyof typeof params, value: string) => {
+  const updateParam = (key: keyof ScreenParams, value: string) => {
+    // Empty input → undefined (omit the param) rather than 0, which the
+    // backend would otherwise treat as a real "min = 0" filter.
     setParams((current) => ({
       ...current,
-      [key]: value === "" ? 0 : Number(value),
+      [key]: value === "" ? undefined : Number(value),
     }))
   }
 
   const handleSaveWatchlist = async () => {
     if (!data?.items?.length) {
       setSaveStatus(t("save.no_results"))
+      return
+    }
+    if (!paramsMatchLastRun) {
+      setSaveStatus(t("save.params_changed"))
       return
     }
 
@@ -148,7 +185,7 @@ export function ScreenersClient({ initialScreenType }: ScreenersClientProps) {
                 )}
               </div>
               <div className="mt-3 font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
-                {option.label}
+                {t(`options.${option.value}.label` as any)}
               </div>
               <div className="mt-2 text-xs text-muted-foreground leading-5">
                 {t(`options.${option.value}.description` as any)}
@@ -258,7 +295,8 @@ export function ScreenersClient({ initialScreenType }: ScreenersClientProps) {
             <button
               type="button"
               onClick={handleSaveWatchlist}
-              disabled={isLoading || !data?.items?.length}
+              disabled={isLoading || !data?.items?.length || !paramsMatchLastRun}
+              title={!paramsMatchLastRun ? t("save.params_changed") : undefined}
               className="w-full rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-semibold px-4 py-2 h-[34px] transition-colors shadow-sm disabled:opacity-50 disabled:pointer-events-none"
             >
               {t("save_workspace.persist")}

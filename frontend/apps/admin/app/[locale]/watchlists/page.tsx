@@ -12,8 +12,15 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { formatWatchlistTimestamp, summarizeWatchlistParams } from "@/lib/watchlist-utils"
-import { refreshAutoWatchlists, refreshWatchlist, stockKeys, useWatchlists } from "@quant/hooks"
-import { Play, RotateCw, Activity, Calendar, Award, Database, Flame } from "lucide-react"
+import {
+  createWatchlist,
+  refreshAutoWatchlists,
+  refreshWatchlist,
+  stockKeys,
+  useStockList,
+  useWatchlists,
+} from "@quant/hooks"
+import { Plus, RotateCw, Activity, Calendar, Award, Database, Flame } from "lucide-react"
 
 export default function WatchlistsPage() {
   const t = useTranslations("watchlists")
@@ -23,10 +30,18 @@ export default function WatchlistsPage() {
   const [isRefreshingAll, setIsRefreshingAll] = useState(false)
   const [expandedWatchlists, setExpandedWatchlists] = useState<Record<string, boolean>>({})
   const [refreshSummaries, setRefreshSummaries] = useState<Record<string, string>>({})
-  
+
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [newName, setNewName] = useState("")
+  const [newNotes, setNewNotes] = useState("")
+  const [newCodes, setNewCodes] = useState("")
+  const [newAutoRefresh, setNewAutoRefresh] = useState("manual")
+  const [isCreating, setIsCreating] = useState(false)
+
   const { data: watchlists, isLoading, isError } = useWatchlists({
     retry: false,
   })
+  const { data: stockList } = useStockList()
 
   const summarizeRefreshChange = (
     previousItems: Array<{ stock_code: string; stock_name: string }>,
@@ -92,20 +107,20 @@ export default function WatchlistsPage() {
       setIsRefreshingAll(true)
       setStatus(t("summary.refreshing_batch"))
       const refreshed = await refreshAutoWatchlists()
-      
+
       const refreshSummaryMap = new Map(
         refreshed.map((watchlist) => {
           const previousItems = watchlists?.find((item) => item.id === watchlist.id)?.items ?? []
           return [watchlist.id, summarizeRefreshChange(previousItems, watchlist.items)]
         }),
       )
-      
+
       await queryClient.setQueryData(stockKeys.watchlists(), (current: typeof watchlists) => {
         if (!current?.length) return refreshed
         const refreshedMap = new Map(refreshed.map((watchlist) => [watchlist.id, watchlist]))
         return current.map((watchlist) => refreshedMap.get(watchlist.id) ?? watchlist)
       })
-      
+
       setRefreshSummaries((current) => ({
         ...current,
         ...Object.fromEntries(refreshSummaryMap),
@@ -116,6 +131,57 @@ export default function WatchlistsPage() {
       setStatus(t("summary.batch_failed"))
     } finally {
       setIsRefreshingAll(false)
+    }
+  }
+
+  const handleCreateWatchlist = async () => {
+    const name = newName.trim()
+    if (!name) {
+      setStatus(t("create.name_required"))
+      return
+    }
+
+    // Parse comma / whitespace / newline-separated codes, dedupe.
+    const rawCodes = newCodes
+      .split(/[\s,，;；]+/)
+      .map((c) => c.trim())
+      .filter(Boolean)
+    const codes = Array.from(new Set(rawCodes))
+
+    if (!codes.length) {
+      setStatus(t("create.codes_required"))
+      return
+    }
+
+    // Map codes → names via the locally tracked stock list. Codes the user
+    // typed that aren't in the universe still get saved (with the code as the
+    // display name) so we don't silently drop their input.
+    const stockByCode = new Map(stockList?.map((s) => [s.code, s.name]) ?? [])
+    const items = codes.map((code) => ({
+      stock_code: code,
+      stock_name: stockByCode.get(code) ?? code,
+    }))
+
+    try {
+      setIsCreating(true)
+      setStatus(t("create.creating"))
+      await createWatchlist({
+        name,
+        notes: newNotes.trim() || undefined,
+        auto_refresh: newAutoRefresh,
+        items,
+      })
+      await queryClient.invalidateQueries({ queryKey: stockKeys.watchlists() })
+      setNewName("")
+      setNewNotes("")
+      setNewCodes("")
+      setShowCreateForm(false)
+      setStatus(t("create.success", { name, count: items.length }))
+      setTimeout(() => setStatus(""), 5000)
+    } catch {
+      setStatus(t("create.failed"))
+    } finally {
+      setIsCreating(false)
     }
   }
 
@@ -190,12 +256,90 @@ export default function WatchlistsPage() {
               <RotateCw className={`h-3.5 w-3.5 ${isRefreshingAll ? "animate-spin" : ""}`} />
               {t("orchestrator.sync_button")}
             </button>
+            <button
+              type="button"
+              onClick={() => setShowCreateForm((v) => !v)}
+              className="inline-flex items-center gap-2 rounded-lg border bg-background/50 hover:bg-background text-foreground font-semibold px-4 py-2 text-xs transition-colors h-[34px]"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {showCreateForm ? t("create.cancel") : t("create.new_button")}
+            </button>
             {status && (
               <span className="text-xs font-semibold text-primary flex items-center gap-1.5 bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-lg">
                 <Activity className="h-3 w-3 animate-pulse" /> {status}
               </span>
             )}
           </div>
+
+          {showCreateForm && (
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3 text-xs">
+              <div className="font-semibold text-primary uppercase tracking-wider text-[10px]">
+                {t("create.form_title")}
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-semibold text-muted-foreground">{t("create.name_label")}</label>
+                  <input
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder={t("create.name_placeholder")}
+                    className="rounded-lg border bg-background/50 px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-semibold text-muted-foreground">{t("create.auto_refresh_label")}</label>
+                  <select
+                    value={newAutoRefresh}
+                    onChange={(e) => setNewAutoRefresh(e.target.value)}
+                    className="rounded-lg border bg-background/50 px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                  >
+                    <option value="manual">{t("create.auto_manual")}</option>
+                    <option value="daily">{t("create.auto_daily")}</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="font-semibold text-muted-foreground">{t("create.codes_label")}</label>
+                <textarea
+                  value={newCodes}
+                  onChange={(e) => setNewCodes(e.target.value)}
+                  placeholder={t("create.codes_placeholder")}
+                  rows={3}
+                  className="rounded-lg border bg-background/50 px-3 py-2 text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                />
+                <span className="text-[10px] text-muted-foreground/80">{t("create.codes_hint")}</span>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="font-semibold text-muted-foreground">{t("create.notes_label")}</label>
+                <input
+                  type="text"
+                  value={newNotes}
+                  onChange={(e) => setNewNotes(e.target.value)}
+                  placeholder={t("create.notes_placeholder")}
+                  className="rounded-lg border bg-background/50 px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateForm(false)}
+                  disabled={isCreating}
+                  className="rounded-lg border bg-background/50 hover:bg-background text-foreground font-semibold px-4 py-2 transition-colors disabled:opacity-50"
+                >
+                  {t("create.cancel")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateWatchlist}
+                  disabled={isCreating}
+                  className="rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-semibold px-4 py-2 transition-colors disabled:opacity-50"
+                >
+                  {isCreating ? t("create.creating") : t("create.submit")}
+                </button>
+              </div>
+            </div>
+          )}
 
           {isError && (
             <div className="rounded-xl border border-dashed border-destructive/30 p-4 text-xs text-muted-foreground bg-destructive/5">

@@ -73,9 +73,9 @@ export default function DashboardPage() {
       title: t("kpi.limit_up_records"),
       value: data?.latest_limit_up_count?.toLocaleString() ?? "-",
       description: t("kpi.limit_up_description"),
-      icon: TrendingDown,
-      className: "text-stock-down",
-      glowClass: "stock-down-glow",
+      icon: TrendingUp,
+      className: "text-stock-up",
+      glowClass: "stock-up-glow",
     },
     {
       title: t("kpi.news_items"),
@@ -203,7 +203,9 @@ export default function DashboardPage() {
               {t("snapshots.dragon_tiger_title")}
             </CardTitle>
             <CardDescription className="text-xs">
-              {latestDragonTigerDate ? `Latest trade session: ${latestDragonTigerDate}` : "Local data sync required"}
+              {latestDragonTigerDate
+                ? t("snapshots.latest_session", { date: latestDragonTigerDate })
+                : t("snapshots.sync_required")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -246,11 +248,13 @@ export default function DashboardPage() {
         <Card className="premium-glass-card bg-background/30 shadow-md">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 font-display text-lg font-bold">
-              <TrendingDown className="h-5 w-5 text-stock-down" />
+              <TrendingUp className="h-5 w-5 text-stock-up" />
               {t("snapshots.limit_up_title")}
             </CardTitle>
             <CardDescription className="text-xs">
-              {latestLimitUpDate ? `Latest trade session: ${latestLimitUpDate}` : "Local data sync required"}
+              {latestLimitUpDate
+                ? t("snapshots.latest_session", { date: latestLimitUpDate })
+                : t("snapshots.sync_required")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -263,11 +267,11 @@ export default function DashboardPage() {
                 <Link
                   key={item.id}
                   href={`/stocks/${item.code}`}
-                  className="block rounded-xl border border-muted/50 p-4 transition-all duration-300 hover:scale-[1.01] hover:border-stock-down/40 hover:bg-background/50 hover:shadow-md hover:shadow-stock-down/5"
+                  className="block rounded-xl border border-muted/50 p-4 transition-all duration-300 hover:scale-[1.01] hover:border-stock-up/40 hover:bg-background/50 hover:shadow-md hover:shadow-stock-up/5"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-stock-down/10 text-[10px] font-bold text-stock-down">
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-stock-up/10 text-[10px] font-bold text-stock-up">
                         {index + 1}
                       </span>
                       <div>
@@ -299,10 +303,12 @@ export default function DashboardPage() {
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2 font-display text-lg font-bold">
             <Newspaper className="h-5 w-5 text-primary" />
-            Market Intelligence Flow
+            {t("news.title")}
           </CardTitle>
           <CardDescription className="text-xs">
-            {latestNewsDate ? `Latest news stream batch: ${latestNewsDate}` : "Financial news feed inactive"}
+            {latestNewsDate
+              ? t("news.latest_batch", { date: latestNewsDate })
+              : t("news.feed_inactive")}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -322,7 +328,7 @@ export default function DashboardPage() {
                 <div>
                   <div className="flex items-center justify-between gap-3 text-[10px] text-muted-foreground font-mono">
                     <span className="bg-primary/10 text-primary px-2 py-0.5 rounded font-semibold uppercase tracking-wider">
-                      {item.source || "FINANCE"}
+                      {item.source || t("news.default_source")}
                     </span>
                     <span>{item.published_at ? item.published_at.slice(11, 16) : item.trade_date}</span>
                   </div>
@@ -332,7 +338,7 @@ export default function DashboardPage() {
                 </div>
                 {item.code && (
                   <div className="mt-3 pt-2 border-t border-muted/30 text-[10px] font-mono text-muted-foreground">
-                    Related Code: <span className="font-semibold text-primary">{item.code}</span>
+                    {t("news.related_code")} <span className="font-semibold text-primary">{item.code}</span>
                   </div>
                 )}
               </a>

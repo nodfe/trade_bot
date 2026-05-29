@@ -6,6 +6,7 @@ import {
   type UseQueryOptions,
 } from "@tanstack/react-query";
 import { api } from "@quant/api-client";
+import { stockKeys } from "./use-stock-data";
 
 // ---------------------------------------------------------------------------
 // Types — mirror backend Pydantic schemas exactly.
@@ -126,7 +127,11 @@ const SYNC_ENDPOINTS: Record<SyncJobKind, string> = {
 /**
  * Trigger a daily-bars sync for a single stock. Different shape from
  * `useTriggerSync` because the params are code + days instead of trade_date.
- * Sync_runs queries are invalidated on completion.
+ *
+ * On completion we invalidate both:
+ *   - `systemKeys.all` so the sync_runs / bot_command_logs tables refresh,
+ *   - `stockKeys.all` so any open kline / quote / market-overview view picks
+ *     up the freshly synced bars instead of staying on stale data.
  */
 export function useSyncDailyBars(
   options?: Omit<
@@ -142,6 +147,7 @@ export function useSyncDailyBars(
       }),
     onSettled: (...args) => {
       queryClient.invalidateQueries({ queryKey: systemKeys.all });
+      queryClient.invalidateQueries({ queryKey: stockKeys.all });
       options?.onSettled?.(...args);
     },
     ...options,
@@ -149,8 +155,12 @@ export function useSyncDailyBars(
 }
 
 /**
- * Trigger a single sync job from the UI. After success, all sync_runs queries
- * are invalidated so the recent-runs table picks up the new row.
+ * Trigger a single sync job from the UI.
+ *
+ * On completion we invalidate both:
+ *   - `systemKeys.all` so the recent-runs table picks up the new row,
+ *   - `stockKeys.all` so dashboard / dragon-tiger / limit-up / news views
+ *     re-fetch with the freshly synced data instead of showing stale rows.
  *
  * Pass a `tradeDate` (YYYY-MM-DD) for date-bound jobs (dragon_tiger / limit_up
  * / news). The stock_list endpoint ignores it.
@@ -176,9 +186,10 @@ export function useTriggerSync(
         params: tradeDate ? { trade_date: tradeDate } : undefined,
       }),
     onSettled: (...args) => {
-      // Refresh the sync-runs list whether the call succeeded or failed,
-      // so the user sees the row that was created either way.
+      // Refresh both system tables (sync_runs row appears) and stock-data
+      // queries (dashboard, dragon-tiger, limit-up, news pick up new rows).
       queryClient.invalidateQueries({ queryKey: systemKeys.all });
+      queryClient.invalidateQueries({ queryKey: stockKeys.all });
       options?.onSettled?.(...args);
     },
     ...options,

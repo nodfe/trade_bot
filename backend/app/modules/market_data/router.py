@@ -45,8 +45,8 @@ async def get_stock_kline(
     limit: int = Query(120, ge=1, le=1000, description="最大返回条数"),
 ) -> list[StockKlineOut]:
     bars = await svc.get_stock_kline(symbol, start, end, limit, period=period)
-    if not bars:
-        raise NotFoundError(f"No kline data found for {symbol}")
+    # Empty list is a valid response (e.g. stock exists but no bars synced yet).
+    # The client distinguishes "no data" from "error" via the empty array.
     return [
         StockKlineOut(
             timestamp=datetime.combine(bar.trade_date, datetime.min.time()),
@@ -126,8 +126,9 @@ async def screen_stocks(
             max_return_5d_pct=max_return_5d_pct,
         ),
     )
-    if not result.items:
-        raise NotFoundError(f"No screening results for {screen_type}")
+    # Empty result is a legitimate "no candidates today" outcome — return the
+    # empty StockScreenResultOut so the client can render an empty state
+    # instead of treating it as an error.
     return result
 
 
@@ -138,8 +139,6 @@ async def get_daily_bars(
     end_date: date | None = Query(None, description="结束日期"),
 ) -> list[DailyBarOut]:
     bars = await svc.get_daily_bars(code, start_date, end_date)
-    if not bars:
-        raise NotFoundError(f"No daily bars found for {code}")
     return [DailyBarOut.model_validate(bar) for bar in bars]
 
 
@@ -159,16 +158,12 @@ async def get_dragon_tiger(
     trade_date: date = Query(..., description="交易日期"),
 ) -> list[DragonTigerOut]:
     items = await svc.get_dragon_tiger_list(trade_date)
-    if not items:
-        raise NotFoundError(f"No dragon tiger data for {trade_date}")
     return [DragonTigerOut.model_validate(item) for item in items]
 
 
 @router.get("/market/limit-up", response_model=list[LimitUpOut])
 async def get_limit_up(trade_date: date = Query(..., description="交易日期")) -> list[LimitUpOut]:
     items = await svc.get_limit_up_board(trade_date)
-    if not items:
-        raise NotFoundError(f"No limit up data for {trade_date}")
     return [LimitUpOut.model_validate(item) for item in items]
 
 
@@ -178,8 +173,6 @@ async def get_news(
     limit: int = Query(50, description="返回条数"),
 ) -> list[NewsOut]:
     items = await svc.get_daily_news(trade_date, limit=limit)
-    if not items:
-        raise NotFoundError(f"No news data for {trade_date}")
     return [NewsOut.model_validate(item) for item in items]
 
 
