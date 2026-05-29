@@ -46,10 +46,17 @@
       "no_dragon_tiger_data": "No Dragon Tiger data available. Run synchronization to retrieve hot money intelligence.",
       "no_limit_up_reason": "Sector concepts not matched yet",
       "open_times": "Opened {times} times",
-      "no_limit_up_data": "No limit-up data available. Run synchronization to capture strong market trends."
+      "no_limit_up_data": "No limit-up data available. Run synchronization to capture strong market trends.",
+      "latest_session": "Latest trade session: {date}",
+      "sync_required": "Local data sync required"
     },
     "news": {
-      "no_news_data": "No financial news stream available. Run synchronization to pull the latest market intelligence."
+      "no_news_data": "No financial news stream available. Run synchronization to pull the latest market intelligence.",
+      "title": "Market Intelligence Flow",
+      "latest_batch": "Latest news stream batch: {date}",
+      "feed_inactive": "Financial news feed inactive",
+      "default_source": "FINANCE",
+      "related_code": "Related Code:"
     }
   },
   "screeners": {
@@ -57,14 +64,17 @@
     "subtitle": "Discover high-probability trading candidates from multi-factor rules.",
     "options": {
       "strong_uptrend": {
+        "label": "Strong Uptrend",
         "description": "Bullish trend continuation with heavy money inflow. Best for tracking leading trend-leading assets.",
         "badge": "🔥 Trend Leader"
       },
       "volume_breakout": {
+        "label": "Volume Breakout",
         "description": "Significant volume surge paired with short-term breakout. Ideal for capturing sudden momentum stocks.",
         "badge": "⚡ Volume Breakout"
       },
       "pullback_watch": {
+        "label": "Pullback Watch",
         "description": "Solid mid-term trend with short-term volume contraction pullback. Awaiting secondary breakout opportunities.",
         "badge": "🎯 Buy the Dip"
       }
@@ -94,7 +104,8 @@
       "saving": "Saving candidate pool...",
       "save_success": "Successfully saved to Watchlists! Auto-refresh pipeline enabled.",
       "save_failed": "Save failed. Please verify database and API connection status.",
-      "name_placeholder": "e.g. Strong Bullish Sectors_May"
+      "name_placeholder": "e.g. Strong Bullish Sectors_May",
+      "params_changed": "Parameters changed. Re-run the scan before saving."
     },
     "candidates": {
       "title": "Screener Candidate Cards",
@@ -114,7 +125,13 @@
       "loading": "Loading tracked stocks pool...",
       "error": "Unable to load stocks. Please check connection.",
       "count": "{count} securities fully tracked and aligned",
-      "no_stocks": "No stock data available. Run stock list synchronization first, and drillable candidate pools will be displayed here."
+      "search_count": "{count} of {total} securities match",
+      "search_placeholder": "Search by code or name...",
+      "no_search_results": "No stocks match your search. Try a different code or name.",
+      "no_stocks": "No stock data available. Run stock list synchronization first, and drillable candidate pools will be displayed here.",
+      "page_indicator": "Page {page} / {totalPages}",
+      "prev_page": "Prev",
+      "next_page": "Next"
     },
     "detail": {
       "dashboard_breadcrumb": "Dashboard",
@@ -157,7 +174,11 @@
       "short_term_strength": "Short-term Strength",
       "mid_term_strength": "Mid-term Strength",
       "no_signals": "No analytical signals recorded for this security yet.",
-      "no_kline_data": "No historical market data available. Please ensure that the main stock market list has been synchronized."
+      "no_kline_data": "No historical market data available. Please ensure that the main stock market list has been synchronized.",
+      "partial_load_title": "Some data could not be loaded",
+      "partial_load_quote": "Quote unavailable",
+      "partial_load_analysis": "Analysis unavailable",
+      "partial_load_kline": "K-line unavailable"
     }
   },
   "strategies": {
@@ -209,6 +230,27 @@
       "min_return_5d": "Min 5D Return {pct}%",
       "min_volume_ratio": "Min Volume Ratio {ratio}x",
       "max_return_5d": "Max 5D Return {pct}%"
+    },
+    "create": {
+      "new_button": "New Watchlist",
+      "cancel": "Cancel",
+      "submit": "Create Watchlist",
+      "form_title": "Create A New Watchlist",
+      "name_label": "Watchlist Name",
+      "name_placeholder": "e.g. Manual Watch · Big Tech",
+      "name_required": "Watchlist name is required.",
+      "codes_label": "Stock Codes",
+      "codes_placeholder": "600519, 000001, 300750",
+      "codes_hint": "Comma, space or newline separated. Names auto-resolved from the local stock universe.",
+      "codes_required": "Add at least one stock code.",
+      "notes_label": "Notes (optional)",
+      "notes_placeholder": "Why are you tracking these names?",
+      "auto_refresh_label": "Auto Refresh",
+      "auto_manual": "Manual",
+      "auto_daily": "Daily Cron Sync",
+      "creating": "Creating watchlist...",
+      "success": "Watchlist 【{name}】 created with {count} candidates.",
+      "failed": "Failed to create watchlist. Please verify the backend connection."
     }
   },
   "navigation": {
