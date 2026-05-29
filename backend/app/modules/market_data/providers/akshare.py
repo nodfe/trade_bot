@@ -3,6 +3,7 @@ import time
 from datetime import date
 
 import akshare as ak
+import pandas as pd
 from loguru import logger
 
 from app.modules.market_data.providers.base import (
@@ -63,19 +64,23 @@ async def _get_spot_snapshot() -> list[Quote]:
             quotes: list[Quote] = []
             for _, row in df.iterrows():
                 try:
+                    # Use pd.notna() instead of truthiness so that legitimate
+                    # 0.0 values (suspended / flat stocks) are preserved and
+                    # NaN values are coerced to the default *before* float()
+                    # would silently produce a NaN that fails Pydantic validation.
                     quotes.append(
                         Quote(
                             code=str(row["代码"]),
                             name=str(row["名称"]),
-                            price=float(row["最新价"]) if row.get("最新价") else 0.0,
-                            change=float(row["涨跌额"]) if row.get("涨跌额") else 0.0,
-                            change_pct=float(row["涨跌幅"]) if row.get("涨跌幅") else 0.0,
-                            volume=int(row["成交量"]) if row.get("成交量") else 0,
-                            amount=float(row["成交额"]) if row.get("成交额") else 0.0,
-                            open=float(row["今开"]) if row.get("今开") else None,
-                            high=float(row["最高"]) if row.get("最高") else None,
-                            low=float(row["最低"]) if row.get("最低") else None,
-                            prev_close=float(row["昨收"]) if row.get("昨收") else None,
+                            price=float(row["最新价"]) if pd.notna(row.get("最新价")) else 0.0,
+                            change=float(row["涨跌额"]) if pd.notna(row.get("涨跌额")) else 0.0,
+                            change_pct=float(row["涨跌幅"]) if pd.notna(row.get("涨跌幅")) else 0.0,
+                            volume=int(row["成交量"]) if pd.notna(row.get("成交量")) else 0,
+                            amount=float(row["成交额"]) if pd.notna(row.get("成交额")) else 0.0,
+                            open=float(row["今开"]) if pd.notna(row.get("今开")) else None,
+                            high=float(row["最高"]) if pd.notna(row.get("最高")) else None,
+                            low=float(row["最低"]) if pd.notna(row.get("最低")) else None,
+                            prev_close=float(row["昨收"]) if pd.notna(row.get("昨收")) else None,
                         )
                     )
                 except (ValueError, TypeError, KeyError):

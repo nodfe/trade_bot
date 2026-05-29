@@ -45,18 +45,21 @@ def test_market_overview_endpoint(monkeypatch):
 def test_stock_quote_endpoint(monkeypatch):
     async def fake_get_stock_quote(code: str):
         assert code == "600519"
-        return SimpleNamespace(
-            code="600519",
-            name="贵州茅台",
-            price=1688.0,
-            change=12.5,
-            change_pct=0.75,
-            volume=123456,
-            amount=987654321.0,
-            high=1690.0,
-            low=1660.0,
-            open=1670.0,
-            prev_close=1675.5,
+        return (
+            SimpleNamespace(
+                code="600519",
+                name="贵州茅台",
+                price=1688.0,
+                change=12.5,
+                change_pct=0.75,
+                volume=123456,
+                amount=987654321.0,
+                high=1690.0,
+                low=1660.0,
+                open=1670.0,
+                prev_close=1675.5,
+            ),
+            False,
         )
 
     monkeypatch.setattr(svc, "get_stock_quote", fake_get_stock_quote)
@@ -78,7 +81,38 @@ def test_stock_quote_endpoint(monkeypatch):
         "open": 1670.0,
         "prev_close": 1675.5,
         "timestamp": "2026-05-27T10:30:00Z",
+        "is_delayed": False,
     }
+
+
+def test_stock_quote_endpoint_delayed(monkeypatch):
+    """When realtime is unavailable, the router should propagate is_delayed=True."""
+
+    async def fake_get_stock_quote(code: str):
+        return (
+            SimpleNamespace(
+                code="600519",
+                name="贵州茅台",
+                price=1700.0,
+                change=20.0,
+                change_pct=1.19,
+                volume=1000,
+                amount=1_700_000.0,
+                high=1710.0,
+                low=1685.0,
+                open=1690.0,
+                prev_close=1680.0,
+            ),
+            True,
+        )
+
+    monkeypatch.setattr(svc, "get_stock_quote", fake_get_stock_quote)
+    monkeypatch.setattr(svc, "quote_timestamp", lambda: datetime(2026, 5, 27, 10, 30, tzinfo=UTC))
+
+    response = client.get("/api/v1/stocks/600519/quote")
+
+    assert response.status_code == 200
+    assert response.json()["is_delayed"] is True
 
 
 def test_stock_detail_endpoint(monkeypatch):

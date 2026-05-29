@@ -36,12 +36,13 @@ class StockCommand(CommandHandler):
             from app.modules.market_data.service import MarketDataService
 
             svc = MarketDataService()
-            quote = await svc.get_stock_quote(code)
+            result = await svc.get_stock_quote(code)
             analysis = await svc.get_stock_analysis_summary(code)
 
-            if not quote:
+            if not result:
                 return {"text": f"未找到股票 {code}，请检查代码是否正确"}
 
+            quote, is_delayed = result
             return {
                 "card_type": "stock_quote",
                 "code": quote.code,
@@ -51,6 +52,7 @@ class StockCommand(CommandHandler):
                 "change_pct": quote.change_pct,
                 "volume": quote.volume,
                 "amount": quote.amount,
+                "is_delayed": is_delayed,
                 "analysis_summary": analysis.summary if analysis else "分析摘要暂不可用",
                 "trend_bias": analysis.trend_bias if analysis else "neutral",
             }
