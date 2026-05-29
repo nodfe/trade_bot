@@ -1,0 +1,222 @@
+{
+  "common": {
+    "industry_placeholder": "Industry Pending",
+    "industry_fallback": "Pending Sync",
+    "market_fallback": "A-share Mainboard",
+    "deviation": "Deviation",
+    "loading": "Loading..."
+  },
+  "dashboard": {
+    "title": "Quant Workstation",
+    "subtitle": "A-share quantitative analysis console and multi-service cluster monitor panel",
+    "latest_trade_date": "Latest Trade Date: {date}",
+    "spine": {
+      "title": "System Multi-Service Spine Health",
+      "connecting": "Establishing secure connection to trade_bot API service...",
+      "error": "API connection error. Verify backend container and network status.",
+      "active": "Market data synchronization pipeline active and aligned with API gateway.",
+      "contract_title": "Standard Contract",
+      "contract_desc": "Backend and admin are aligned 1:1 using the unified standard API contract spine.",
+      "db_title": "TimescaleDB",
+      "db_desc": "High-throughput hypertable layouts are active on the latest migration version.",
+      "pipeline_title": "Active Calculations",
+      "pipeline_desc": "Celery worker nodes are orchestrating background quantitative analysis in real-time."
+    },
+    "kpi": {
+      "tracked_stocks": "Tracked Stocks",
+      "tracked_description": "A-share securities synchronized in the local databases",
+      "dragon_tiger_records": "Dragon Tiger Records",
+      "dragon_tiger_description": "Latest entries net buying volume by hot money and institutions",
+      "limit_up_records": "Limit Up Records",
+      "limit_up_description": "Latest securities hitting the daily limit-up threshold conceptually",
+      "news_items": "Market Intelligence Flow",
+      "news_description": "Cleaned and processed real-time financial market news streams"
+    },
+    "sentiment": {
+      "title_up": "Dragon Tiger Capital Sectors ({upCount})",
+      "energy_ratio": "Sector Energy Allocation Ratio",
+      "title_down": "Limit Up Momentum ({downCount})",
+      "description": "Short-term hot money vs. yesterday's strong limit-ups orientation: {upPercent}% vs {downPercent}%"
+    },
+    "snapshots": {
+      "dragon_tiger_title": "Dragon Tiger Snapshots",
+      "limit_up_title": "Limit Up Leaderboard",
+      "no_reason": "No entry reason matched yet",
+      "net_buy": "Net Buy",
+      "no_dragon_tiger_data": "No Dragon Tiger data available. Run synchronization to retrieve hot money intelligence.",
+      "no_limit_up_reason": "Sector concepts not matched yet",
+      "open_times": "Opened {times} times",
+      "no_limit_up_data": "No limit-up data available. Run synchronization to capture strong market trends."
+    },
+    "news": {
+      "no_news_data": "No financial news stream available. Run synchronization to pull the latest market intelligence."
+    }
+  },
+  "screeners": {
+    "title": "Quantitative Screeners",
+    "subtitle": "Discover high-probability trading candidates from multi-factor rules.",
+    "options": {
+      "strong_uptrend": {
+        "description": "Bullish trend continuation with heavy money inflow. Best for tracking leading trend-leading assets.",
+        "badge": "🔥 Trend Leader"
+      },
+      "volume_breakout": {
+        "description": "Significant volume surge paired with short-term breakout. Ideal for capturing sudden momentum stocks.",
+        "badge": "⚡ Volume Breakout"
+      },
+      "pullback_watch": {
+        "description": "Solid mid-term trend with short-term volume contraction pullback. Awaiting secondary breakout opportunities.",
+        "badge": "🎯 Buy the Dip"
+      }
+    },
+    "tuning": {
+      "title": "Screener Tuning Parameters",
+      "subtitle": "Fine-tune thresholds for price momentum, return margins, and volume breakout.",
+      "max_matches": "Max Matches Limit",
+      "min_return_20d": "Min 20D Return (%)",
+      "min_return_5d": "Min 5D Return (%)",
+      "min_volume_ratio": "Min Volume Ratio",
+      "max_return_5d": "Max 5D Return (%)"
+    },
+    "save_workspace": {
+      "title": "Save Screener Workspace",
+      "scanning": "Running quant scanner across A-share master...",
+      "error": "Scanner encountered a connection boundary.",
+      "matches_found": "Located {count} matches. Persist this workspace into an auto-updating candidate pool.",
+      "watchlist_name": "Watchlist Name",
+      "auto_sync": "Auto Sync Pipeline",
+      "daily_sync": "Daily Cron Sync (18:00)",
+      "manual_sync": "Manual Synchronization",
+      "persist": "Persist Candidate Pool"
+    },
+    "save": {
+      "no_results": "No screening results available to save",
+      "saving": "Saving candidate pool...",
+      "save_success": "Successfully saved to Watchlists! Auto-refresh pipeline enabled.",
+      "save_failed": "Save failed. Please verify database and API connection status.",
+      "name_placeholder": "e.g. Strong Bullish Sectors_May"
+    },
+    "candidates": {
+      "title": "Screener Candidate Cards",
+      "subtitle": "Tap a card to inspect technical indicators, RSI heat, and TradingView candlestick histories.",
+      "horizon_5d": "5D Horizon",
+      "horizon_20d": "20D Horizon",
+      "vol_ratio_5d": "5D Vol Ratio",
+      "related_news": "Related News",
+      "no_candidates": "No matching stocks found for the current screening rules. Try adjusting the parameters to expand the search."
+    }
+  },
+  "stocks": {
+    "list": {
+      "title": "A-Share Universe",
+      "subtitle": "Browse the locally tracked and synchronized A-share stock pools.",
+      "universe": "Securities Pool",
+      "loading": "Loading tracked stocks pool...",
+      "error": "Unable to load stocks. Please check connection.",
+      "count": "{count} securities fully tracked and aligned",
+      "no_stocks": "No stock data available. Run stock list synchronization first, and drillable candidate pools will be displayed here."
+    },
+    "detail": {
+      "dashboard_breadcrumb": "Dashboard",
+      "active_context": "Active Watchlist Context",
+      "context_desc": "You navigated to this security via a saved workflow.",
+      "active_pool": "Active Pool",
+      "return_path": "Return Path",
+      "back_to_watchlists": "Back to Watchlists Workspace",
+      "source_screener": "Source Screener",
+      "inspect_screener": "Inspect Source Screener",
+      "saved_criteria": "Saved Criteria Filters",
+      "live_price": "Live Session Price",
+      "session_open": "Session Open",
+      "high_price": "High Price",
+      "low_price": "Low Price",
+      "volume": "Volume",
+      "technical_summary": "Technical Intelligence Summary",
+      "technical_desc": "Shared analysis and scoring summary consumed by both admin portal and Lark Bot.",
+      "analyst_verdict": "Analyst Verdict",
+      "ma5": "MA5 Alignment",
+      "ma20": "MA20 Alignment",
+      "return_5d": "5D Return Momentum",
+      "return_20d": "20D Return Momentum",
+      "rsi14": "RSI (14) Momentum Heat",
+      "oversold": "Oversold (30)",
+      "neutral": "Neutral (50)",
+      "overbought": "Overbought (70)",
+      "signals_title": "Multi-Factor Signals Explanation",
+      "signals_desc": "Review detailed interpretations driving this security's quantitative ratings.",
+      "kline_title": "Interactive Candlestick History (K-Line)",
+      "kline_desc": "Daily bars snapshot including SMA5, SMA20 overlay, and bottom volume histogram.",
+      "profile_title": "Security Profile",
+      "profile_desc": "Static master definitions from the Chinese A-share local database.",
+      "symbol_code": "Symbol Code",
+      "assigned_industry": "Assigned Industry",
+      "domestic_market": "Domestic Market",
+      "ipo_date": "IPO List Date",
+      "no_analysis": "Analysis summary is currently unavailable. Please perform market sync to populate stock analysis data.",
+      "short_term_strength": "Short-term Strength",
+      "mid_term_strength": "Mid-term Strength",
+      "no_signals": "No analytical signals recorded for this security yet.",
+      "no_kline_data": "No historical market data available. Please ensure that the main stock market list has been synchronized."
+    }
+  },
+  "watchlists": {
+    "title": "Watchlist Candidates",
+    "subtitle": "Monitor, refresh, and drill down into candidate names with context.",
+    "orchestrator": {
+      "title": "Pool Orchestrator",
+      "cron_active": "cron active",
+      "total_pools": "Total Pools",
+      "daily_cron_sync": "Daily Cron Sync",
+      "overall_stocks": "Overall Stocks",
+      "sync_button": "Sync Daily Watchlists"
+    },
+    "card": {
+      "sync_tooltip": "Sync this pool now",
+      "no_description": "No custom pool description provided.",
+      "created": "Created",
+      "last_refreshed": "Last Refreshed",
+      "thresholds": "Refresh Thresholds",
+      "latest_changes": "Latest Changes",
+      "candidates_count": "Candidates ({count})",
+      "collapse": "Collapse Candidates",
+      "view_more": "View More Candidates ({count} stocks)"
+    },
+    "summary": {
+      "total_stocks": "Total {count} stocks",
+      "new_in": "New {count} stocks",
+      "removed": "Removed {count} stocks",
+      "kept": "Holdings {count} stocks",
+      "new_in_highlight": " · Added 【{names}】",
+      "refresh_success": "Watchlist 【{name}】 refreshed successfully: {summary}",
+      "refresh_failed": "Single candidate pool refresh failed. Please check the database connection.",
+      "refreshing_batch": "Scheduling background analysis tasks for batch synchronization...",
+      "batch_success": "Synchronized {count} candidate pools in batch, automatically updating the latest sector movement summaries!",
+      "batch_failed": "Batch scheduling synchronization failed. Please check backend and Celery worker status.",
+      "load_failed": "Watchlist data failed to load. Please go to ",
+      "screeners_link": "Screeners Console",
+      "first_watchlist_guide": " to build and save your first quantitative watchlist candidate pool.",
+      "no_watchlists": "No saved watchlists found. Go to the Screeners page to screen and save candidates."
+    },
+    "utils": {
+      "count": "Count {limit}",
+      "min_return_20d": "Min 20D Return {pct}%",
+      "min_return_5d": "Min 5D Return {pct}%",
+      "min_volume_ratio": "Min Volume Ratio {ratio}x",
+      "max_return_5d": "Max 5D Return {pct}%"
+    }
+  },
+  "navigation": {
+    "group_title": "Navigation",
+    "dashboard": "Dashboard",
+    "stocks": "Stocks",
+    "strategies": "Strategies",
+    "screeners": "Screeners",
+    "watchlists": "Watchlists",
+    "backtests": "Backtests",
+    "users": "Users",
+    "settings": "Settings"
+  },
+  "sidebar": {
+    "theme_label": "Theme"
+  }
+}

@@ -2,20 +2,28 @@ services:
   backend:
     volumes:
       - ./backend:/app
+      - /app/.venv
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 5000 --reload
 
   celery-worker:
     volumes:
       - ./backend:/app
+      - /app/.venv
     command: uv run celery -A celery_app worker --loglevel=info --concurrency=2
 
   celery-beat:
     volumes:
       - ./backend:/app
+      - /app/.venv
     command: uv run celery -A celery_app beat --loglevel=info
 
   admin:
     working_dir: /app
+    environment:
+      - NODE_ENV=development
     volumes:
       - ./frontend:/app
-    command: sh -c "corepack enable && pnpm install && pnpm --filter @quant/admin dev -- --hostname 0.0.0.0 --port 5001"
+      - /app/node_modules
+      - /app/apps/admin/.next
+    command: sh -c "corepack enable && pnpm install && pnpm --filter @quant/admin exec next dev --turbopack --hostname 0.0.0.0 --port 5001"
+

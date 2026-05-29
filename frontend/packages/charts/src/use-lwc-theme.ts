@@ -1,39 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import type {
+import {
   ColorType,
   CrosshairMode,
   LineStyle,
+  LineWidth,
 } from "lightweight-charts";
-
-/**
- * Reads a CSS custom property from the <html> element,
- * returning the raw HSL value string (e.g. "0 80% 58%").
- */
-function getCSSVar(name: string, element?: HTMLElement): string {
-  const el = element ?? document.documentElement;
-  return getComputedStyle(el).getPropertyValue(name).trim();
-}
-
-/**
- * Converts an HSL string to a hex color for Lightweight Charts,
- * which requires hex or rgba format.
- */
-function hslToHex(raw: string): string {
-  if (!raw) return "#888888";
-  if (raw.startsWith("#")) return raw;
-  const parts = raw.replace(/%/g, "").split(/\s+/).map(Number);
-  if (parts.length < 3) return "#888888";
-  const [h, s, l] = parts;
-  const a = (s / 100) * Math.min(l / 100, 1 - l / 100);
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12;
-    const color = l / 100 - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color)
-      .toString(16)
-      .padStart(2, "0");
-  };
-  return `#${f(0)}${f(8)}${f(4)}`;
-}
+import { getCSSVar, resolveColorToHex } from "./use-echarts-theme";
 
 export interface LWCThemeColors {
   layout: {
@@ -47,8 +19,8 @@ export interface LWCThemeColors {
   };
   crosshair: {
     mode: CrosshairMode;
-    vertLine: { color: string; style: LineStyle; width: number; labelBackgroundColor: string };
-    horzLine: { color: string; style: LineStyle; width: number; labelBackgroundColor: string };
+    vertLine: { color: string; style: LineStyle; width: LineWidth; labelBackgroundColor: string };
+    horzLine: { color: string; style: LineStyle; width: LineWidth; labelBackgroundColor: string };
   };
   /** A-share convention: red = up, green = down */
   stockUp: string;
@@ -56,10 +28,10 @@ export interface LWCThemeColors {
 }
 
 /**
- * Hook that reads Shadcn CSS variables and returns a theme config
+ * Hook that reads Shadcn Tailwind v4 CSS variables and returns a theme config
  * for TradingView Lightweight Charts.
  *
- * A-share convention: red = up (--stock-up), green = down (--stock-down).
+ * A-share convention: red = up (--color-stock-up), green = down (--color-stock-down).
  * Re-reads variables when dark mode toggles (observes <html> class changes).
  */
 export function useLWCTheme(): LWCThemeColors {
@@ -83,12 +55,12 @@ export function useLWCTheme(): LWCThemeColors {
   return useMemo(() => {
     const root = document.documentElement;
 
-    const background = hslToHex(getCSSVar("--background", root));
-    const foreground = hslToHex(getCSSVar("--foreground", root));
-    const border = hslToHex(getCSSVar("--border", root));
-    const mutedForeground = hslToHex(getCSSVar("--muted-foreground", root));
-    const stockUp = hslToHex(getCSSVar("--stock-up", root));
-    const stockDown = hslToHex(getCSSVar("--stock-down", root));
+    const background = resolveColorToHex(getCSSVar("--color-background", root));
+    const foreground = resolveColorToHex(getCSSVar("--color-foreground", root));
+    const border = resolveColorToHex(getCSSVar("--color-border", root));
+    const mutedForeground = resolveColorToHex(getCSSVar("--color-muted-foreground", root));
+    const stockUp = resolveColorToHex(getCSSVar("--color-stock-up", root));
+    const stockDown = resolveColorToHex(getCSSVar("--color-stock-down", root));
 
     return {
       layout: {
@@ -97,21 +69,21 @@ export function useLWCTheme(): LWCThemeColors {
         fontSize: 12,
       },
       grid: {
-        vertLines: { color: border, style: 2 }, // LineStyle.Dashed
-        horzLines: { color: border, style: 2 },
+        vertLines: { color: border, style: LineStyle.Dashed },
+        horzLines: { color: border, style: LineStyle.Dashed },
       },
       crosshair: {
-        mode: 0 as CrosshairMode, // CrosshairMode.Normal
+        mode: CrosshairMode.Normal,
         vertLine: {
           color: foreground,
-          style: 2,
-          width: 1,
+          style: LineStyle.Dashed,
+          width: 1 as LineWidth,
           labelBackgroundColor: stockUp,
         },
         horzLine: {
           color: foreground,
-          style: 2,
-          width: 1,
+          style: LineStyle.Dashed,
+          width: 1 as LineWidth,
           labelBackgroundColor: stockUp,
         },
       },
@@ -120,5 +92,3 @@ export function useLWCTheme(): LWCThemeColors {
     };
   }, [isDark]);
 }
-
-export { hslToHex, getCSSVar };

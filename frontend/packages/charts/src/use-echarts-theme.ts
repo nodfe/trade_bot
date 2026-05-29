@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 /**
  * Reads a CSS custom property from :root or the <html> element,
- * returning the raw HSL value string (e.g. "12 76% 61%").
+ * returning the raw style string (e.g. "oklch(1 0 0)").
  */
 function getCSSVar(name: string, element?: HTMLElement): string {
   const el = element ?? document.documentElement;
@@ -10,32 +10,33 @@ function getCSSVar(name: string, element?: HTMLElement): string {
 }
 
 /**
- * Converts an HSL string like "12 76% 61%" to a CSS color string "hsl(12 76% 61%)".
+ * Resolves any CSS color string (including var(), oklch(), hsl(), names)
+ * into a standard Hex color code using the browser's native layout engine.
  */
-function hslToCSS(raw: string): string {
-  if (!raw) return "";
-  // Already has hsl() wrapper
-  if (raw.startsWith("hsl")) return raw;
-  return `hsl(${raw})`;
-}
+export function resolveColorToHex(cssColor: string): string {
+  if (typeof document === "undefined" || !cssColor) return "#888888";
+  
+  // Resolve var() custom properties first
+  if (cssColor.startsWith("var(")) {
+    const varName = cssColor.slice(4, -1).trim();
+    return resolveColorToHex(getCSSVar(varName));
+  }
 
-/**
- * Converts an HSL string to a hex color for libraries that don't support hsl().
- */
-function hslToHex(raw: string): string {
-  if (!raw) return "#888888";
-  const parts = raw.replace(/%/g, "").split(/\s+/).map(Number);
-  if (parts.length < 3) return "#888888";
-  const [h, s, l] = parts;
-  const a = (s / 100) * Math.min(l / 100, 1 - l / 100);
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12;
-    const color = l / 100 - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color)
-      .toString(16)
-      .padStart(2, "0");
-  };
-  return `#${f(0)}${f(8)}${f(4)}`;
+  const temp = document.createElement("div");
+  temp.style.color = cssColor;
+  temp.style.display = "none";
+  document.body.appendChild(temp);
+  const computed = getComputedStyle(temp).color; // returns "rgb(r, g, b)" or "rgba(r, g, b, a)"
+  document.body.removeChild(temp);
+
+  const match = computed.match(/\d+(\.\d+)?/g);
+  if (match && match.length >= 3) {
+    const r = Math.round(Number(match[0]));
+    const g = Math.round(Number(match[1]));
+    const b = Math.round(Number(match[2]));
+    return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+  }
+  return cssColor;
 }
 
 export interface EChartsTheme {
@@ -64,10 +65,8 @@ export interface EChartsTheme {
 }
 
 /**
- * Hook that reads Shadcn CSS variables and returns an ECharts theme object.
- *
- * A-share convention: red = up (--stock-up), green = down (--stock-down).
- * The hook re-reads variables when dark mode toggles (observes <html> class changes).
+ * Hook that reads Shadcn Tailwind v4 CSS variables and returns an ECharts theme object.
+ * Re-reads variables when dark mode toggles (observes <html> class changes).
  */
 export function useEChartsTheme(): EChartsTheme {
   const [isDark, setIsDark] = useState(() =>
@@ -91,16 +90,16 @@ export function useEChartsTheme(): EChartsTheme {
     const root = document.documentElement;
 
     const chartColors = Array.from({ length: 5 }, (_, i) => {
-      const raw = getCSSVar(`--chart-${i + 1}`, root);
-      return hslToCSS(raw);
+      const raw = getCSSVar(`--color-chart-${i + 1}`, root);
+      return resolveColorToHex(raw);
     });
 
-    const stockUp = hslToCSS(getCSSVar("--stock-up", root));
-    const stockDown = hslToCSS(getCSSVar("--stock-down", root));
-    const foreground = hslToCSS(getCSSVar("--foreground", root));
-    const background = hslToCSS(getCSSVar("--background", root));
-    const mutedForeground = hslToCSS(getCSSVar("--muted-foreground", root));
-    const border = hslToCSS(getCSSVar("--border", root));
+    const stockUp = resolveColorToHex(getCSSVar("--color-stock-up", root));
+    const stockDown = resolveColorToHex(getCSSVar("--color-stock-down", root));
+    const foreground = resolveColorToHex(getCSSVar("--color-foreground", root));
+    const background = resolveColorToHex(getCSSVar("--color-background", root));
+    const mutedForeground = resolveColorToHex(getCSSVar("--color-muted-foreground", root));
+    const border = resolveColorToHex(getCSSVar("--color-border", root));
 
     // Prepend financial colors so chart series can use them easily
     const color = [stockUp, stockDown, ...chartColors];
@@ -135,4 +134,4 @@ export function useEChartsTheme(): EChartsTheme {
   }, [isDark]);
 }
 
-export { hslToCSS, hslToHex, getCSSVar };
+export { getCSSVar };

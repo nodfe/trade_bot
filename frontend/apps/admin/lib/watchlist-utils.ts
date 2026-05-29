@@ -40,28 +40,39 @@ export function parseWatchlistParams(screenParamsJson: string | null | undefined
   }
 }
 
-export function summarizeWatchlistParams(screenParamsJson: string | null | undefined): string[] {
+export function summarizeWatchlistParams(
+  screenParamsJson: string | null | undefined,
+  t?: (key: string, variables?: any) => string
+): string[] {
   const parsed = parseWatchlistParams(screenParamsJson)
   if (!parsed) {
     return []
   }
 
   const summary: string[] = []
+  const translate = t || ((key: string, vars?: any) => {
+    if (key === "utils.count") return `数量 ${vars.limit}`
+    if (key === "utils.min_return_20d") return `20日最小涨幅 ${vars.pct}%`
+    if (key === "utils.min_return_5d") return `5日最小涨幅 ${vars.pct}%`
+    if (key === "utils.min_volume_ratio") return `最小量比 ${vars.ratio}x`
+    if (key === "utils.max_return_5d") return `5日最大涨幅 ${vars.pct}%`
+    return ""
+  })
 
   if (parsed.limit != null) {
-    summary.push(`数量 ${parsed.limit}`)
+    summary.push(translate("utils.count", { limit: parsed.limit }))
   }
   if (parsed.min_return_20d_pct != null) {
-    summary.push(`20日最小涨幅 ${formatNumber(parsed.min_return_20d_pct)}%`)
+    summary.push(translate("utils.min_return_20d", { pct: formatNumber(parsed.min_return_20d_pct) }))
   }
   if (parsed.min_return_5d_pct != null) {
-    summary.push(`5日最小涨幅 ${formatNumber(parsed.min_return_5d_pct)}%`)
+    summary.push(translate("utils.min_return_5d", { pct: formatNumber(parsed.min_return_5d_pct) }))
   }
   if (parsed.min_volume_ratio != null) {
-    summary.push(`最小量比 ${formatNumber(parsed.min_volume_ratio)}x`)
+    summary.push(translate("utils.min_volume_ratio", { ratio: formatNumber(parsed.min_volume_ratio) }))
   }
   if (parsed.max_return_5d_pct != null) {
-    summary.push(`5日最大涨幅 ${formatNumber(parsed.max_return_5d_pct)}%`)
+    summary.push(translate("utils.max_return_5d", { pct: formatNumber(parsed.max_return_5d_pct) }))
   }
 
   return summary

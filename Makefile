@@ -11,7 +11,7 @@ dev-backend:
 
 # Start frontend dev server
 dev-frontend:
-	cd frontend/apps/admin && pnpm exec next dev --turbopack --hostname 0.0.0.0 --port 5001
+	cd frontend/apps/admin && rm -rf .next && pnpm exec next dev --turbopack --hostname 0.0.0.0 --port 5001
 
 # Run database migrations
 migrate:

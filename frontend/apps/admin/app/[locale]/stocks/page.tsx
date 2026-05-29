@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
 import {
   Card,
@@ -12,24 +13,26 @@ import {
 import { useStockList } from "@quant/hooks"
 
 export default function StocksPage() {
+  const t = useTranslations("stocks")
+  const tCommon = useTranslations("common")
   const { data: stocks, isLoading, isError } = useStockList()
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Stocks</h1>
-        <p className="text-muted-foreground">Browse the locally tracked A-share universe.</p>
+        <h1 className="text-2xl font-bold tracking-tight">{t("list.title")}</h1>
+        <p className="text-muted-foreground">{t("list.subtitle")}</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Stock Universe</CardTitle>
+          <CardTitle>{t("list.universe")}</CardTitle>
           <CardDescription>
             {isLoading
-              ? "Loading tracked stocks"
+              ? t("list.loading")
               : isError
-                ? "Unable to load stocks"
-                : `${stocks?.length ?? 0} stocks available`}
+                ? t("list.error")
+                : t("list.count", { count: stocks?.length ?? 0 })}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -49,13 +52,13 @@ export default function StocksPage() {
                 </div>
               </div>
               <div className="mt-3 text-sm text-muted-foreground">
-                {stock.industry || "行业待补充"}
+                {stock.industry || tCommon("industry_placeholder")}
               </div>
             </Link>
           ))}
           {!stocks?.length && !isLoading && (
             <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground md:col-span-2 xl:col-span-3">
-              暂无股票数据，先执行股票列表同步后这里会展示可钻取的标的池。
+              {t("list.no_stocks")}
             </div>
           )}
         </CardContent>

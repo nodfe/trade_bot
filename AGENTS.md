@@ -66,6 +66,7 @@ trade_bot/
 - **CSS**: Tailwind v4 CSS-first 配置 (无 tailwind.config.ts), oklch 色彩空间
 - **A-share 配色**: 红涨绿跌 (text-stock-up = red, text-stock-down = green)
 - **Dark mode**: next-themes (class strategy)
+- **缓存与构建冲突**: 执行 `next build` 生产构建后，启动 `next dev` 开发服务器时如果出现 Internal Server Error 报错，原因为生产构建产生的 `.next` 缓存干扰了开发态 Turbopack，可通过清空 `.next/` 缓存解决。该机制已自动集成至 `make dev-frontend` 命令中。
 
 ## Bot Conventions
 

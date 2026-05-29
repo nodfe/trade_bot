@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
 
@@ -164,7 +165,7 @@ const Sidebar = React.forwardRef<
       return (
         <div
           className={cn(
-            "flex h-full w-[--sidebar-width] flex-col bg-sidebar text-sidebar-foreground",
+            "flex h-full w-[var(--sidebar-width)] flex-col bg-sidebar text-sidebar-foreground",
             className
           )}
           ref={ref}
@@ -199,7 +200,7 @@ const Sidebar = React.forwardRef<
             data-sidebar="sidebar"
             data-mobile="true"
             className={cn(
-              "fixed inset-y-0 z-50 h-full w-[--sidebar-width-mobile] bg-sidebar p-0 text-sidebar-foreground transition-transform duration-200 ease-in-out",
+              "fixed inset-y-0 z-50 h-full w-[var(--sidebar-width-mobile)] bg-sidebar p-0 text-sidebar-foreground transition-transform duration-200 ease-in-out",
               side === "left"
                 ? openMobile
                   ? "translate-x-0"
@@ -228,24 +229,24 @@ const Sidebar = React.forwardRef<
         {/* Gap */}
         <div
           className={cn(
-            "relative h-svh w-[--sidebar-width] bg-transparent transition-[width] duration-200 ease-linear",
+            "relative h-svh w-[var(--sidebar-width)] bg-transparent transition-[width] duration-200 ease-linear",
             "group-data-[collapsible=offcanvas]:w-0",
             "group-data-[side=right]:rotate-180",
             variant === "floating" || variant === "inset"
               ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
+              : "group-data-[collapsible=icon]:w-[var(--sidebar-width-icon)]"
           )}
         />
         <div
           data-sidebar="sidebar"
           className={cn(
-            "fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] duration-200 ease-linear md:flex",
+            "fixed inset-y-0 z-10 hidden h-svh w-[var(--sidebar-width)] transition-[left,right,width] duration-200 ease-linear md:flex",
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
               : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
             variant === "floating" || variant === "inset"
               ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
+              : "group-data-[collapsible=icon]:w-[var(--sidebar-width-icon)] group-data-[side=left]:border-r group-data-[side=right]:border-l",
             className
           )}
         >
@@ -504,7 +505,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 group-data-[collapsible=icon]:[&>span]:hidden [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -534,26 +535,10 @@ const SidebarMenuButton = React.forwardRef<
   } & VariantProps<typeof sidebarMenuButtonVariants>
 >(
   ({ asChild = false, isActive = false, variant = "default", size = "default", tooltip, className, ...props }, ref) => {
-    if (asChild) {
-      const { children, ...anchorProps } = props as React.ComponentProps<"a"> & {
-        children?: React.ReactNode
-      }
-
-      return (
-        <a
-          data-sidebar="menu-button"
-          data-size={size}
-          data-active={isActive}
-          className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-          {...anchorProps}
-        >
-          {children}
-        </a>
-      )
-    }
+    const Comp = asChild ? Slot : "button"
 
     return (
-      <button
+      <Comp
         ref={ref}
         data-sidebar="menu-button"
         data-size={size}
