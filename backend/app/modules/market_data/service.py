@@ -47,10 +47,11 @@ class MarketDataService:
         prev_bar = await self.repo.get_latest_daily_bar(code, before=bar.trade_date) if bar else None
 
         if not bar:
-            # No DB data — use self.get_daily_bars() which checks DB then facade
+            # No DB data — go straight to the facade (we just confirmed DB is
+            # empty, so self.get_daily_bars() would only re-query it for nothing).
             end_date = date.today()
             start_date = end_date - timedelta(days=7)
-            bars = await self.get_daily_bars(code, start_date, end_date)
+            bars = await self.facade.get_daily_bars(code, start_date, end_date)
             if len(bars) >= 2:
                 bars.sort(key=lambda b: b.trade_date)
                 latest = bars[-1]
@@ -72,6 +73,9 @@ class MarketDataService:
             elif len(bars) == 1:
                 latest = bars[0]
                 stock = await self.repo.get_stock(code)
+                # Single-bar branch: we have no prior close to compare against,
+                # so leave prev_close as None rather than fabricating it from
+                # latest.open (which would contradict change=0.0/change_pct=0.0).
                 return Quote(
                     code=latest.code,
                     name=stock.name if stock else latest.code,
@@ -83,7 +87,7 @@ class MarketDataService:
                     open=latest.open,
                     high=latest.high,
                     low=latest.low,
-                    prev_close=latest.open,
+                    prev_close=None,
                 ), True
             return None
 

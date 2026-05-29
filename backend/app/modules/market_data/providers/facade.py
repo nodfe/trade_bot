@@ -1,8 +1,10 @@
 import asyncio
+import time
 from datetime import date
 
 from loguru import logger
 
+from app.modules.market_data.providers import akshare as _ak_mod
 from app.modules.market_data.providers.akshare import AKShareProvider
 from app.modules.market_data.providers.base import (
     Bar,
@@ -16,8 +18,11 @@ from app.modules.market_data.providers.tushare import TushareProvider
 
 # Max seconds to wait for a realtime quote before falling through to
 # the daily-bar fallback.  Keeps the quote endpoint responsive even
-# when the external market-data API is slow or unreachable.
-_QUOTE_TIMEOUT = 1.0
+# when the external market-data API is slow or unreachable.  The cold
+# AKShare snapshot fetch (~5000 stocks) typically takes 1-3s, so 3s
+# strikes a balance between responsiveness and not tripping the backoff
+# on every server boot.
+_QUOTE_TIMEOUT = 3.0
 
 
 class DataFacade:
@@ -52,9 +57,6 @@ class DataFacade:
             logger.warning("Realtime quote timed out after %.1fs", _QUOTE_TIMEOUT)
             # Mark the AKShare snapshot as failed so subsequent requests skip
             # the retry and go straight to the daily-bar fallback.
-            import time
-            from app.modules.market_data.providers.akshare import _snapshot_fail_ts
-            import app.modules.market_data.providers.akshare as _ak_mod
             _ak_mod._snapshot_fail_ts = time.monotonic()
         return []
 
