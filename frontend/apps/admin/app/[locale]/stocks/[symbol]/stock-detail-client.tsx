@@ -102,7 +102,9 @@ export function StockDetailClient({ symbol, sourceContext }: StockDetailClientPr
 
         {/* Floating Fin-Card Quote Header */}
         <div className={`premium-glass-card rounded-2xl border px-6 py-4 text-right shadow-md max-w-[200px] transition-all duration-300 ${glowBorderClass}`}>
-          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">{t("detail.live_price")}</div>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">
+            {quote?.is_delayed ? t("detail.latest_close") : t("detail.live_price")}
+          </div>
           <div className="mt-1.5 text-3xl font-extrabold font-display tracking-tight text-foreground">
             {formatNumber(quote?.price ?? latestBar?.close)}
           </div>

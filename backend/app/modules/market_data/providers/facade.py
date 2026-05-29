@@ -1,3 +1,4 @@
+import asyncio
 from datetime import date
 
 from loguru import logger
@@ -12,6 +13,11 @@ from app.modules.market_data.providers.base import (
     StockInfo,
 )
 from app.modules.market_data.providers.tushare import TushareProvider
+
+# Max seconds to wait for a realtime quote before falling through to
+# the daily-bar fallback.  Keeps the quote endpoint responsive even
+# when the external market-data API is slow or unreachable.
+_QUOTE_TIMEOUT = 1.0
 
 
 class DataFacade:
@@ -31,13 +37,26 @@ class DataFacade:
         return await self.fallback.get_daily_bars(code, start_date, end_date)
 
     async def get_realtime_quote(self, codes: list[str]) -> list[Quote]:
+        # Tushare does not support realtime quotes — skip straight to AKShare.
+        # Apply a timeout so we don't stall for 5+ seconds when the external
+        # API is unreachable; the caller will fall through to the daily-bar
+        # fallback instead.
         try:
-            result = await self.primary.get_realtime_quote(codes)
+            result = await asyncio.wait_for(
+                self.fallback.get_realtime_quote(codes),
+                timeout=_QUOTE_TIMEOUT,
+            )
             if result:
                 return result
-        except Exception as e:
-            logger.warning(f"Primary source (Tushare) failed for realtime_quote: {e}")
-        return await self.fallback.get_realtime_quote(codes)
+        except asyncio.TimeoutError:
+            logger.warning("Realtime quote timed out after %.1fs", _QUOTE_TIMEOUT)
+            # Mark the AKShare snapshot as failed so subsequent requests skip
+            # the retry and go straight to the daily-bar fallback.
+            import time
+            from app.modules.market_data.providers.akshare import _snapshot_fail_ts
+            import app.modules.market_data.providers.akshare as _ak_mod
+            _ak_mod._snapshot_fail_ts = time.monotonic()
+        return []
 
     async def get_stock_list(self) -> list[StockInfo]:
         try:

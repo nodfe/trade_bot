@@ -127,6 +127,7 @@
       "inspect_screener": "检查来源选股器",
       "saved_criteria": "已保存的因子过滤条件",
       "live_price": "实时价格 (Live)",
+      "latest_close": "最新收盘价",
       "session_open": "今日开盘",
       "high_price": "今日最高",
       "low_price": "今日最低",
@@ -158,6 +159,11 @@
       "no_signals": "当前暂未录入任何评测信号。",
       "no_kline_data": "暂无历史行情数据。请确保股票主行情列表已执行同步。"
     }
+  },
+  "strategies": {
+    "title": "量化策略",
+    "subtitle": "策略管理与回测配置工作区（即将推出）",
+    "coming_soon": "策略管理功能即将推出，敬请期待。"
   },
   "watchlists": {
     "title": "量化自选池",
@@ -216,6 +222,16 @@
     "users": "用户管理",
     "settings": "系统配置",
     "system": "系统状态"
+  },
+  "backtests": {
+    "title": "回测引擎",
+    "subtitle": "历史回测与策略验证工作区（即将推出）",
+    "coming_soon": "回测引擎功能即将推出，敬请期待。"
+  },
+  "settings": {
+    "title": "系统配置",
+    "subtitle": "API 密钥、数据源与调度配置（即将推出）",
+    "coming_soon": "系统配置功能即将推出，敬请期待。"
   },
   "system": {
     "title": "系统状态",
@@ -281,6 +297,11 @@
         "at": "调用时间"
       }
     }
+  },
+  "users": {
+    "title": "用户管理",
+    "subtitle": "管理员账户与权限配置（即将推出）",
+    "coming_soon": "用户管理功能即将推出，敬请期待。"
   },
   "sidebar": {
     "theme_label": "主题模式"

@@ -78,9 +78,10 @@ async def get_stock_analysis(code: str) -> StockAnalysisSummaryOut:
 
 @router.get("/stocks/{code}/quote", response_model=StockQuoteOut)
 async def get_stock_quote(code: str) -> StockQuoteOut:
-    quote = await svc.get_stock_quote(code)
-    if not quote:
-        raise NotFoundError(f"No realtime quote found for {code}")
+    result = await svc.get_stock_quote(code)
+    if not result:
+        raise NotFoundError(f"No quote data found for {code}")
+    quote, is_delayed = result
     return StockQuoteOut(
         symbol=quote.code,
         name=quote.name,
@@ -94,6 +95,7 @@ async def get_stock_quote(code: str) -> StockQuoteOut:
         open=quote.open,
         prev_close=quote.prev_close,
         timestamp=svc.quote_timestamp(),
+        is_delayed=is_delayed,
     )
 
 

@@ -32,11 +32,78 @@ class MarketDataService:
     async def get_stock(self, code: str) -> Stock | None:
         return await self.repo.get_stock(code)
 
-    async def get_stock_quote(self, code: str) -> Quote | None:
-        quotes = await self.facade.get_realtime_quote([code])
-        if quotes:
-            return quotes[0]
-        return None
+    async def get_stock_quote(self, code: str) -> tuple[Quote, bool] | None:
+        """Return (Quote, is_delayed). is_delayed=True when sourced from daily bar."""
+        # Try realtime AKShare quote first
+        try:
+            quotes = await self.facade.get_realtime_quote([code])
+            if quotes:
+                return quotes[0], False
+        except Exception as e:
+            logger.warning(f"Realtime quote failed for {code}: {e}")
+
+        # Fallback: construct quote from the latest daily bar (DB first, then facade)
+        bar = await self.repo.get_latest_daily_bar(code)
+        prev_bar = await self.repo.get_latest_daily_bar(code, before=bar.trade_date) if bar else None
+
+        if not bar:
+            # No DB data — use self.get_daily_bars() which checks DB then facade
+            end_date = date.today()
+            start_date = end_date - timedelta(days=7)
+            bars = await self.get_daily_bars(code, start_date, end_date)
+            if len(bars) >= 2:
+                bars.sort(key=lambda b: b.trade_date)
+                latest = bars[-1]
+                prev = bars[-2]
+                stock = await self.repo.get_stock(code)
+                return Quote(
+                    code=latest.code,
+                    name=stock.name if stock else latest.code,
+                    price=latest.close,
+                    change=round(latest.close - prev.close, 2),
+                    change_pct=round((latest.close - prev.close) / prev.close * 100, 2) if prev.close else 0.0,
+                    volume=latest.volume,
+                    amount=latest.amount,
+                    open=latest.open,
+                    high=latest.high,
+                    low=latest.low,
+                    prev_close=prev.close,
+                ), True
+            elif len(bars) == 1:
+                latest = bars[0]
+                stock = await self.repo.get_stock(code)
+                return Quote(
+                    code=latest.code,
+                    name=stock.name if stock else latest.code,
+                    price=latest.close,
+                    change=0.0,
+                    change_pct=0.0,
+                    volume=latest.volume,
+                    amount=latest.amount,
+                    open=latest.open,
+                    high=latest.high,
+                    low=latest.low,
+                    prev_close=latest.open,
+                ), True
+            return None
+
+        prev_close = prev_bar.close if prev_bar else bar.open
+        change = round(bar.close - prev_close, 2)
+        change_pct = round(change / prev_close * 100, 2) if prev_close else 0.0
+        stock = await self.repo.get_stock(code)
+        return Quote(
+            code=bar.code,
+            name=stock.name if stock else bar.code,
+            price=bar.close,
+            change=change,
+            change_pct=change_pct,
+            volume=bar.volume,
+            amount=bar.amount,
+            open=bar.open,
+            high=bar.high,
+            low=bar.low,
+            prev_close=prev_close,
+        ), True
 
     async def get_stock_kline(
         self,

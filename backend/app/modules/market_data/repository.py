@@ -17,6 +17,21 @@ class MarketDataRepository:
             result = await session.execute(select(Stock).where(Stock.code == code))
             return result.scalar_one_or_none()
 
+    async def get_latest_daily_bar(
+        self, code: str, before: date | None = None
+    ) -> DailyBar | None:
+        async with async_session_factory() as session:
+            stmt = (
+                select(DailyBar)
+                .where(DailyBar.code == code)
+                .order_by(DailyBar.trade_date.desc())
+                .limit(1)
+            )
+            if before:
+                stmt = stmt.where(DailyBar.trade_date < before)
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none()
+
     async def get_latest_trade_date_for_bars(self, code: str) -> date | None:
         async with async_session_factory() as session:
             result = await session.execute(

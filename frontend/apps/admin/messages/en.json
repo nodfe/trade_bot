@@ -127,6 +127,7 @@
       "inspect_screener": "Inspect Source Screener",
       "saved_criteria": "Saved Criteria Filters",
       "live_price": "Live Session Price",
+      "latest_close": "Latest Close",
       "session_open": "Session Open",
       "high_price": "High Price",
       "low_price": "Low Price",
@@ -158,6 +159,11 @@
       "no_signals": "No analytical signals recorded for this security yet.",
       "no_kline_data": "No historical market data available. Please ensure that the main stock market list has been synchronized."
     }
+  },
+  "strategies": {
+    "title": "Quant Strategies",
+    "subtitle": "Strategy management and backtesting workspace (coming soon)",
+    "coming_soon": "Strategy management features are coming soon. Stay tuned."
   },
   "watchlists": {
     "title": "Watchlist Candidates",
@@ -216,6 +222,16 @@
     "users": "Users",
     "settings": "Settings",
     "system": "System"
+  },
+  "backtests": {
+    "title": "Backtest Engine",
+    "subtitle": "Historical backtesting and strategy validation workspace (coming soon)",
+    "coming_soon": "Backtesting engine features are coming soon. Stay tuned."
+  },
+  "settings": {
+    "title": "System Settings",
+    "subtitle": "API keys, data sources, and scheduling configuration (coming soon)",
+    "coming_soon": "System settings features are coming soon. Stay tuned."
   },
   "system": {
     "title": "System Status",
@@ -281,6 +297,11 @@
         "at": "At"
       }
     }
+  },
+  "users": {
+    "title": "User Management",
+    "subtitle": "Admin accounts and permission configuration (coming soon)",
+    "coming_soon": "User management features are coming soon. Stay tuned."
   },
   "sidebar": {
     "theme_label": "Theme"
