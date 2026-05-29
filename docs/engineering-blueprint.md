@@ -185,57 +185,18 @@ The repo's stated chart policy is sensible and should stay:
 - default service ports remain `5000`, `5001`, `5432`, `6379`
 - `8081` stays forbidden
 
-## 5. Harness-Style Engineering Guardrails
+## 5. Engineering Discipline ("Harness")
 
-No explicit repository-local Harness specification was found, so this project should use the following working interpretation until a stricter internal standard is provided.
+The project's engineering discipline is documented in `docs/engineering-harness.md`. That file is the authoritative checklist for contracts, migrations, dependencies, observability, testing, bot adapter rules, and Definition of Done. Read it before opening a PR.
 
-### 5.1 Delivery Rules
+Key rules at a glance:
 
-Every meaningful feature should include:
-
-- contract definition
-- implementation
-- tests
-- operational visibility
-- short documentation update
-
-### 5.2 Contract Discipline
-
-- API routes must have typed request and response schemas
-- shared frontend hooks must map 1:1 to actual backend endpoints
-- bot commands must call stable service interfaces, not reach into providers directly unless intentionally thin
-
-### 5.3 Observability by Default
-
-Every module should emit structured logs for:
-
-- sync start/end/failure
-- external provider fallback
-- command invocation and failure
-- async task lifecycle
-
-Next step after MVP:
-
-- add request IDs / trace IDs
-- add admin-facing sync/job history
-
-### 5.4 Safe Evolution
-
-- schema changes require Alembic migrations
-- breaking API changes require explicit versioning or compatibility plan
-- adapter-specific behavior must not leak into shared interfaces without review
-
-### 5.5 Persistent Knowledge
-
-As the project evolves, keep adding short engineering notes in `docs/` for:
-
-- architecture decisions
-- provider quirks
-- Feishu platform caveats
-- data quality edge cases
-- rollout and recovery steps
-
-This is the "不断完善沉淀" part turned into a repeatable habit.
+- Public dependencies only (PyPI / npmjs.org / Docker Hub / GHCR)
+- Every schema change ships with an Alembic migration
+- Every route has Pydantic request/response schemas
+- All errors use the shared envelope (`app/shared/errors.py`)
+- Bot SDK imports stay inside `bot/adapters/<platform>/`
+- Port 8081 is forbidden everywhere
 
 ## 6. Delivery Roadmap
 

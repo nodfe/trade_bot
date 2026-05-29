@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from loguru import logger
@@ -8,6 +9,7 @@ from app.config import settings
 from app.modules.bot.adapters.base import BotAdapter, BotMessage, CardAction, CardMessage
 from app.modules.bot.adapters.feishu.adapter import FeishuAdapter
 from app.modules.bot.adapters.feishu.card_builder import FeishuCardBuilder
+from app.modules.bot.command_logs import BotCommandLogRepository
 from app.modules.bot.commands.analyze import AnalyzeCommand
 from app.modules.bot.commands.base import CommandRouter
 from app.modules.bot.commands.help import HelpCommand
@@ -36,6 +38,7 @@ class BotService:
         self.router = CommandRouter()
         self.middlewares: list[BotMiddleware] = []
         self.sessions = SessionManager()
+        self.command_logs = BotCommandLogRepository()
 
         self._register_commands()
         self._register_adapters()
@@ -123,20 +126,76 @@ class BotService:
     async def _dispatch_command(self, message: BotMessage) -> None:
         """Route a message to the correct CommandHandler."""
         handler, args = self.router.get_handler(message.text)
+        # Resolve which platform delivered this message. Today only Feishu
+        # registers, but plumbing through the platform name keeps the log
+        # honest once additional adapters land.
+        platform = next(iter(self.adapters.keys()), "unknown")
 
         if handler is None:
-            # Not a /command -- could be natural language; for MVP just ignore
             await self._reply_text(message.chat_id, "未知命令，输入 /help 查看可用命令")
+            await self._record_command_log(
+                platform=platform,
+                message=message,
+                command="<no_command>",
+                args_text=message.text or None,
+                started=time.monotonic(),
+                error=None,
+            )
             return
 
-        result = await handler.handle(message, args)
+        command_name = f"/{handler.name}"
+        started = time.monotonic()
+        try:
+            result = await handler.handle(message, args)
+        except Exception as exc:
+            await self._record_command_log(
+                platform=platform,
+                message=message,
+                command=command_name,
+                args_text=args or None,
+                started=started,
+                error=str(exc)[:1000],
+            )
+            raise
 
-        # Determine which adapter sent this message (feishu for now)
-        adapter = self.adapters.get("feishu")
-        if not adapter:
-            return
+        adapter = self.adapters.get(platform)
+        if adapter is not None:
+            await self._send_result(adapter, message.chat_id, result)
 
-        await self._send_result(adapter, message.chat_id, result)
+        await self._record_command_log(
+            platform=platform,
+            message=message,
+            command=command_name,
+            args_text=args or None,
+            started=started,
+            error=None,
+        )
+
+    async def _record_command_log(
+        self,
+        *,
+        platform: str,
+        message: BotMessage,
+        command: str,
+        args_text: str | None,
+        started: float,
+        error: str | None,
+    ) -> None:
+        duration_ms = int((time.monotonic() - started) * 1000)
+        try:
+            await self.command_logs.create(
+                platform=platform,
+                chat_id=message.chat_id,
+                user_id=message.user_id,
+                command=command,
+                args_text=args_text,
+                status="failed" if error else "success",
+                error=error,
+                duration_ms=duration_ms,
+            )
+        except Exception as log_exc:
+            # Persistence failure should never break the user-facing reply.
+            logger.error(f"Failed to persist bot command log: {log_exc}")
 
     async def _on_card_action(self, action: CardAction) -> None:
         """Handle card button clicks (e.g. 'analyze:600519')."""

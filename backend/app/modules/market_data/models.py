@@ -22,7 +22,7 @@ class DailyBar(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     code: Mapped[str] = mapped_column(String(10), index=True)
-    trade_date: Mapped[date] = mapped_column(Date, index=True)
+    trade_date: Mapped[date] = mapped_column(Date, primary_key=True, index=True)
     open: Mapped[float] = mapped_column(Float)
     high: Mapped[float] = mapped_column(Float)
     low: Mapped[float] = mapped_column(Float)
@@ -50,7 +50,7 @@ class DragonTigerList(Base):
     sell_amount: Mapped[float | None] = mapped_column(Float)
     net_buy: Mapped[float | None] = mapped_column(Float)
 
-    __table_args__ = (Index("ix_lhb_date_code", "trade_date", "code", unique=True),)
+    __table_args__ = (Index("ix_lhb_date_code_reason", "trade_date", "code", "reason", unique=True),)
 
 
 class LimitUpBoard(Base):

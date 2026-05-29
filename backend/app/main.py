@@ -9,7 +9,10 @@ import app.core.logging as app_logging  # noqa: F401 - init logging
 from app.modules.bot.router import router as bot_router
 from app.modules.bot.service import BotService
 from app.modules.market_data.router import router as market_router
+from app.modules.sync_runs.router import router as sync_runs_router
 from app.modules.watchlist.router import router as watchlist_router
+from app.shared.errors import install_error_handlers
+from app.shared.middleware import RequestIdMiddleware
 
 _bot_service: BotService | None = None
 
@@ -36,6 +39,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(RequestIdMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -44,9 +48,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+install_error_handlers(app)
+
 app.include_router(market_router, prefix="/api/v1")
 app.include_router(bot_router, prefix="/api/v1")
 app.include_router(watchlist_router, prefix="/api/v1")
+app.include_router(sync_runs_router, prefix="/api/v1")
 
 
 @app.get("/health")

@@ -49,8 +49,13 @@ class TushareProvider(MarketDataSource):
         ]
 
     async def get_realtime_quote(self, codes: list[str]) -> list[Quote]:
-        logger.warning("Tushare does not support realtime quotes, use AKShare instead")
-        return []
+        # Tushare Pro does not expose realtime tick quotes. Raise so DataFacade
+        # cleanly falls through to AKShare instead of treating an empty result
+        # as a successful primary call (and instead of spamming a warning log
+        # on every 15s frontend poll).
+        raise NotImplementedError(
+            "Tushare Pro does not expose realtime tick quotes; use AKShare"
+        )
 
     async def get_stock_list(self) -> list[StockInfo]:
         pro = self._ensure_client()
@@ -131,8 +136,12 @@ class TushareProvider(MarketDataSource):
             return []
 
     async def get_daily_news(self, trade_date: date) -> list[NewsItem]:
-        logger.warning("Tushare does not support daily news, use AKShare instead")
-        return []
+        # Tushare Pro does not expose daily news; the DataFacade short-circuits
+        # to AKShare directly. Raise here for clarity if a caller bypasses the
+        # facade.
+        raise NotImplementedError(
+            "Tushare Pro does not expose daily news; use AKShare"
+        )
 
     @staticmethod
     def _to_ts_code(code: str) -> str:

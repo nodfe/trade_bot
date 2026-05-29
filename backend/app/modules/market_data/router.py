@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Query
 
@@ -24,6 +25,9 @@ router = APIRouter(tags=["market"])
 svc = MarketDataService()
 
 
+KlinePeriod = Literal["daily", "weekly", "monthly"]
+
+
 @router.get("/stocks", response_model=list[StockOut])
 async def list_stocks() -> list[StockOut]:
     stocks = await svc.get_stocks()
@@ -33,11 +37,14 @@ async def list_stocks() -> list[StockOut]:
 @router.get("/stocks/kline", response_model=list[StockKlineOut])
 async def get_stock_kline(
     symbol: str = Query(..., description="股票代码"),
+    period: KlinePeriod = Query(
+        "daily", description="K线周期: daily / weekly / monthly (服务端按日线重采样)"
+    ),
     start: date | None = Query(None, description="开始日期"),
     end: date | None = Query(None, description="结束日期"),
     limit: int = Query(120, ge=1, le=1000, description="最大返回条数"),
 ) -> list[StockKlineOut]:
-    bars = await svc.get_stock_kline(symbol, start, end, limit)
+    bars = await svc.get_stock_kline(symbol, start, end, limit, period=period)
     if not bars:
         raise NotFoundError(f"No kline data found for {symbol}")
     return [
@@ -172,6 +179,21 @@ async def get_news(
     if not items:
         raise NotFoundError(f"No news data for {trade_date}")
     return [NewsOut.model_validate(item) for item in items]
+
+
+@router.post("/market/sync/stock-list", response_model=SyncResult)
+async def sync_stock_list_endpoint() -> SyncResult:
+    count = await svc.sync_stock_list()
+    return SyncResult(synced=count, message=f"股票列表同步成功，共 {count} 条")
+
+
+@router.post("/market/sync/daily-bars/{code}", response_model=SyncResult)
+async def sync_daily_bars_endpoint(
+    code: str,
+    days: int = Query(120, ge=1, le=3650, description="向前同步的自然日天数"),
+) -> SyncResult:
+    count = await svc.sync_daily_bars(code, days=days)
+    return SyncResult(synced=count, message=f"{code} 日线同步成功，共 {count} 条")
 
 
 @router.post("/market/sync/dragon-tiger", response_model=SyncResult)

@@ -13,30 +13,57 @@ celery_app = Celery(
     ],
 )
 
+# Autodiscover tasks across feature modules. The explicit ``include`` list above
+# already covers ``market_data`` and ``watchlist``; ``autodiscover_tasks`` keeps
+# the pipeline open for future modules without re-editing this file.
+celery_app.autodiscover_tasks(
+    [
+        "app.modules.market_data",
+        "app.modules.watchlist",
+    ]
+)
+
+# Expose ``app`` as the canonical handle expected by Celery beat / worker CLI
+# (``celery -A celery_app:app``) and by tests/sanity scripts.
+app = celery_app
+
 celery_app.conf.update(
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",
-    timezone="Asia/Shanghai",
+    # Beat schedule entries below are expressed in UTC. A-share regular session
+    # closes at 15:00 CST (07:00 UTC); we add buffers per source freshness.
+    timezone="UTC",
     enable_utc=True,
-    beat_schedule={
-        "sync-daily-bars": {
-            "task": "app.modules.market_data.tasks.sync_daily_bars_task",
-            "schedule": crontab(hour=18, minute=0),  # 每日 18:00 (UTC+8)
-        },
-        "sync-dragon-tiger": {
-            "task": "app.modules.market_data.tasks.sync_dragon_tiger_task",
-            "schedule": crontab(hour=18, minute=30),
-        },
-        "sync-limit-up": {
-            "task": "app.modules.market_data.tasks.sync_limit_up_task",
-            "schedule": crontab(hour=18, minute=30),
-        },
-        "sync-news": {
-            "task": "app.modules.market_data.tasks.sync_news_task",
-            "schedule": crontab(hour=20, minute=0),
-        },
-        # Dynamic watchlists can be refreshed by explicit task dispatch today.
-        # Scheduled fan-out can be added once watchlist definitions stabilize.
-    },
 )
+
+celery_app.conf.beat_schedule = {
+    # Stock universe refresh — weekday 16:00 CST (08:00 UTC).
+    "sync-stock-list-daily": {
+        "task": "market_data.sync_stock_list",
+        "schedule": crontab(hour=8, minute=0, day_of_week="1-5"),
+    },
+    # Limit-up board — weekday 16:10 CST (08:10 UTC); EOD aggregator publishes
+    # shortly after close.
+    "sync-limit-up-daily": {
+        "task": "market_data.sync_limit_up_board",
+        "schedule": crontab(hour=8, minute=10, day_of_week="1-5"),
+    },
+    # Daily bars batch fan-out — weekday 16:30 CST (08:30 UTC) for top N codes.
+    "sync-daily-bars-batch": {
+        "task": "market_data.sync_daily_bars_batch",
+        "schedule": crontab(hour=8, minute=30, day_of_week="1-5"),
+    },
+    # Dragon-tiger list — weekday 18:30 CST (10:30 UTC); the exchange publishes
+    # the EOD list a few hours after close.
+    "sync-dragon-tiger-daily": {
+        "task": "market_data.sync_dragon_tiger_list",
+        "schedule": crontab(hour=10, minute=30, day_of_week="1-5"),
+    },
+    # News digest — every day 20:00 CST (12:00 UTC), including weekends.
+    # Celery's ``day_of_week`` is 0-6 (Sun=0); ``"*"`` covers all 7 days.
+    "sync-news-daily": {
+        "task": "market_data.sync_daily_news",
+        "schedule": crontab(hour=12, minute=0, day_of_week="*"),
+    },
+}

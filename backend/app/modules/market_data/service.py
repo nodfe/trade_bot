@@ -17,12 +17,14 @@ from app.modules.market_data.schemas import (
     StockScreenResultOut,
     SyncResult,
 )
+from app.modules.sync_runs import SyncRunService
 
 
 class MarketDataService:
     def __init__(self):
         self.repo = MarketDataRepository()
         self.facade: DataFacade = create_data_facade()
+        self.sync_runs = SyncRunService()
 
     async def get_stocks(self) -> list[Stock]:
         return await self.repo.get_stocks()
@@ -42,12 +44,73 @@ class MarketDataService:
         start_date: date | None = None,
         end_date: date | None = None,
         limit: int = 120,
+        period: str = "daily",
     ) -> list[DailyBar]:
         bars = await self.get_daily_bars(code, start_date, end_date)
         bars_sorted = sorted(bars, key=lambda bar: bar.trade_date)
+        if period != "daily":
+            bars_sorted = self._resample_bars(bars_sorted, period)
         if limit > 0:
             return bars_sorted[-limit:]
         return bars_sorted
+
+    @staticmethod
+    def _resample_bars(bars: list[DailyBar], period: str) -> list[DailyBar]:
+        """Resample daily bars to weekly/monthly server-side.
+
+        Aggregation: open=first, high=max, low=min, close=last,
+        volume=sum, amount=sum, turnover=mean.
+        """
+        if not bars:
+            return bars
+        rule_map = {"weekly": "W-FRI", "monthly": "ME"}
+        rule = rule_map.get(period)
+        if rule is None:
+            return bars
+        df = pd.DataFrame(
+            [
+                {
+                    "trade_date": pd.Timestamp(b.trade_date),
+                    "code": b.code,
+                    "open": b.open,
+                    "high": b.high,
+                    "low": b.low,
+                    "close": b.close,
+                    "volume": b.volume,
+                    "amount": b.amount,
+                    "turnover": b.turnover,
+                }
+                for b in bars
+            ]
+        ).set_index("trade_date")
+        agg = df.resample(rule).agg(
+            {
+                "code": "last",
+                "open": "first",
+                "high": "max",
+                "low": "min",
+                "close": "last",
+                "volume": "sum",
+                "amount": "sum",
+                "turnover": "mean",
+            }
+        ).dropna(subset=["close"])
+        return [
+            DailyBar(
+                code=row["code"],
+                trade_date=idx.date(),
+                open=float(row["open"]),
+                high=float(row["high"]),
+                low=float(row["low"]),
+                close=float(row["close"]),
+                volume=int(row["volume"]),
+                amount=float(row["amount"]),
+                turnover=(
+                    float(row["turnover"]) if pd.notna(row["turnover"]) else None
+                ),
+            )
+            for idx, row in agg.iterrows()
+        ]
 
     async def get_stock_analysis_summary(self, code: str) -> StockAnalysisSummaryOut | None:
         bars = await self.get_stock_kline(code, limit=20)
@@ -502,42 +565,48 @@ class MarketDataService:
         ]
 
     async def sync_stock_list(self) -> int:
-        stock_dtos = await self.facade.get_stock_list()
-        stocks = [
-            Stock(
-                code=s.code,
-                name=s.name,
-                industry=s.industry,
-                market=s.market or "SZ",
-                list_date=s.list_date,
-            )
-            for s in stock_dtos
-        ]
-        count = await self.repo.save_stocks(stocks)
-        logger.info(f"Synced {count} stocks")
-        return count
+        async with self.sync_runs.track("stock_list") as handle:
+            stock_dtos = await self.facade.get_stock_list()
+            stocks = [
+                Stock(
+                    code=s.code,
+                    name=s.name,
+                    industry=s.industry,
+                    market=s.market or "SZ",
+                    list_date=s.list_date,
+                )
+                for s in stock_dtos
+            ]
+            count = await self.repo.save_stocks(stocks)
+            handle.synced_count = count
+            logger.info(f"Synced {count} stocks")
+            return count
 
     async def sync_daily_bars(self, code: str, days: int = 30) -> int:
-        end_date = date.today()
-        start_date = end_date - timedelta(days=days)
-        bar_dtos = await self.facade.get_daily_bars(code, start_date, end_date)
-        bars = [
-            DailyBar(
-                code=b.code,
-                trade_date=b.trade_date,
-                open=b.open,
-                high=b.high,
-                low=b.low,
-                close=b.close,
-                volume=b.volume,
-                amount=b.amount,
-                turnover=b.turnover,
-            )
-            for b in bar_dtos
-        ]
-        count = await self.repo.save_daily_bars(bars)
-        logger.info(f"Synced {count} daily bars for {code}")
-        return count
+        async with self.sync_runs.track(
+            "daily_bars", target=code, meta={"days": days}
+        ) as handle:
+            end_date = date.today()
+            start_date = end_date - timedelta(days=days)
+            bar_dtos = await self.facade.get_daily_bars(code, start_date, end_date)
+            bars = [
+                DailyBar(
+                    code=b.code,
+                    trade_date=b.trade_date,
+                    open=b.open,
+                    high=b.high,
+                    low=b.low,
+                    close=b.close,
+                    volume=b.volume,
+                    amount=b.amount,
+                    turnover=b.turnover,
+                )
+                for b in bar_dtos
+            ]
+            count = await self.repo.save_daily_bars(bars)
+            handle.synced_count = count
+            logger.info(f"Synced {count} daily bars for {code}")
+            return count
 
     # -- Dragon Tiger List (龙虎榜) --
 
@@ -549,30 +618,42 @@ class MarketDataService:
             trade_date = date.today()
         if await self.repo.has_dragon_tiger_data(trade_date):
             existing = await self.repo.get_dragon_tiger_list(trade_date)
+            await self.sync_runs.mark_skipped(
+                "dragon_tiger",
+                target=str(trade_date),
+                reason="data already present",
+            )
             return SyncResult(
                 synced=0,
                 message=f"{trade_date} 龙虎榜数据已存在，共 {len(existing)} 条记录",
             )
-        dtos = await self.facade.get_dragon_tiger_list(trade_date)
-        if not dtos:
-            return SyncResult(synced=0, message=f"{trade_date} 龙虎榜无数据")
-        items = [
-            DragonTigerList(
-                trade_date=d.trade_date,
-                code=d.code,
-                name=d.name,
-                close_price=d.close_price,
-                change_pct=d.change_pct,
-                reason=d.reason,
-                buy_amount=d.buy_amount,
-                sell_amount=d.sell_amount,
-                net_buy=d.net_buy,
+        async with self.sync_runs.track(
+            "dragon_tiger", target=str(trade_date)
+        ) as handle:
+            dtos = await self.facade.get_dragon_tiger_list(trade_date)
+            if not dtos:
+                handle.synced_count = 0
+                return SyncResult(synced=0, message=f"{trade_date} 龙虎榜无数据")
+            items = [
+                DragonTigerList(
+                    trade_date=d.trade_date,
+                    code=d.code,
+                    name=d.name,
+                    close_price=d.close_price,
+                    change_pct=d.change_pct,
+                    reason=d.reason,
+                    buy_amount=d.buy_amount,
+                    sell_amount=d.sell_amount,
+                    net_buy=d.net_buy,
+                )
+                for d in dtos
+            ]
+            count = await self.repo.save_dragon_tiger_list(items)
+            handle.synced_count = count
+            logger.info(f"Synced {count} dragon tiger items for {trade_date}")
+            return SyncResult(
+                synced=count, message=f"{trade_date} 龙虎榜抓取成功，共 {count} 条"
             )
-            for d in dtos
-        ]
-        count = await self.repo.save_dragon_tiger_list(items)
-        logger.info(f"Synced {count} dragon tiger items for {trade_date}")
-        return SyncResult(synced=count, message=f"{trade_date} 龙虎榜抓取成功，共 {count} 条")
 
     # -- Limit Up Board (涨停板) --
 
@@ -584,30 +665,42 @@ class MarketDataService:
             trade_date = date.today()
         if await self.repo.has_limit_up_data(trade_date):
             existing = await self.repo.get_limit_up_board(trade_date)
+            await self.sync_runs.mark_skipped(
+                "limit_up",
+                target=str(trade_date),
+                reason="data already present",
+            )
             return SyncResult(
                 synced=0,
                 message=f"{trade_date} 涨停板数据已存在，共 {len(existing)} 条记录",
             )
-        dtos = await self.facade.get_limit_up_board(trade_date)
-        if not dtos:
-            return SyncResult(synced=0, message=f"{trade_date} 涨停板无数据")
-        items = [
-            LimitUpBoard(
-                trade_date=d.trade_date,
-                code=d.code,
-                name=d.name,
-                close_price=d.close_price,
-                change_pct=d.change_pct,
-                limit_up_time=d.limit_up_time,
-                open_times=d.open_times,
-                turnover=d.turnover,
-                reason=d.reason,
+        async with self.sync_runs.track(
+            "limit_up", target=str(trade_date)
+        ) as handle:
+            dtos = await self.facade.get_limit_up_board(trade_date)
+            if not dtos:
+                handle.synced_count = 0
+                return SyncResult(synced=0, message=f"{trade_date} 涨停板无数据")
+            items = [
+                LimitUpBoard(
+                    trade_date=d.trade_date,
+                    code=d.code,
+                    name=d.name,
+                    close_price=d.close_price,
+                    change_pct=d.change_pct,
+                    limit_up_time=d.limit_up_time,
+                    open_times=d.open_times,
+                    turnover=d.turnover,
+                    reason=d.reason,
+                )
+                for d in dtos
+            ]
+            count = await self.repo.save_limit_up_board(items)
+            handle.synced_count = count
+            logger.info(f"Synced {count} limit up items for {trade_date}")
+            return SyncResult(
+                synced=count, message=f"{trade_date} 涨停板抓取成功，共 {count} 条"
             )
-            for d in dtos
-        ]
-        count = await self.repo.save_limit_up_board(items)
-        logger.info(f"Synced {count} limit up items for {trade_date}")
-        return SyncResult(synced=count, message=f"{trade_date} 涨停板抓取成功，共 {count} 条")
 
     # -- Daily News (每日新闻) --
 
@@ -618,22 +711,32 @@ class MarketDataService:
         if not trade_date:
             trade_date = date.today()
         if await self.repo.has_news_data(trade_date):
-            return SyncResult(synced=0, message=f"{trade_date} 新闻数据已存在")
-        dtos = await self.facade.get_daily_news(trade_date)
-        if not dtos:
-            return SyncResult(synced=0, message=f"{trade_date} 新闻无数据")
-        items = [
-            DailyNews(
-                trade_date=d.trade_date,
-                title=d.title,
-                content=d.content,
-                source=d.source,
-                url=d.url,
-                code=d.code,
-                published_at=d.published_at,
+            await self.sync_runs.mark_skipped(
+                "news",
+                target=str(trade_date),
+                reason="data already present",
             )
-            for d in dtos
-        ]
-        count = await self.repo.save_daily_news(items)
-        logger.info(f"Synced {count} news items for {trade_date}")
-        return SyncResult(synced=count, message=f"{trade_date} 新闻抓取成功，共 {count} 条")
+            return SyncResult(synced=0, message=f"{trade_date} 新闻数据已存在")
+        async with self.sync_runs.track("news", target=str(trade_date)) as handle:
+            dtos = await self.facade.get_daily_news(trade_date)
+            if not dtos:
+                handle.synced_count = 0
+                return SyncResult(synced=0, message=f"{trade_date} 新闻无数据")
+            items = [
+                DailyNews(
+                    trade_date=d.trade_date,
+                    title=d.title,
+                    content=d.content,
+                    source=d.source,
+                    url=d.url,
+                    code=d.code,
+                    published_at=d.published_at,
+                )
+                for d in dtos
+            ]
+            count = await self.repo.save_daily_news(items)
+            handle.synced_count = count
+            logger.info(f"Synced {count} news items for {trade_date}")
+            return SyncResult(
+                synced=count, message=f"{trade_date} 新闻抓取成功，共 {count} 条"
+            )
