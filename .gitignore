@@ -55,5 +55,11 @@ test-results/
 # Build
 *.tsbuildinfo
 
+# Celery
+celerybeat-schedule
+
+# pnpm
+.pnpm-store/
+
 # Misc
 .claude/

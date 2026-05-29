@@ -214,7 +214,73 @@
     "watchlists": "自选池",
     "backtests": "回测引擎",
     "users": "用户管理",
-    "settings": "系统配置"
+    "settings": "系统配置",
+    "system": "系统状态"
+  },
+  "system": {
+    "title": "系统状态",
+    "subtitle": "监控数据同步任务执行历史与 Bot 命令调用流水",
+    "manualSync": {
+      "title": "手动触发同步",
+      "subtitle": "调试用：选填日期后点击对应任务，立即触发一次同步并写入下方记录表。",
+      "date": {
+        "label": "交易日期 (可选)",
+        "hint": "留空表示用今天 / 仅 dragon_tiger / limit_up / news 使用"
+      },
+      "jobs": {
+        "stock_list": "同步股票列表",
+        "dragon_tiger": "同步龙虎榜",
+        "limit_up": "同步涨停板",
+        "news": "同步财经新闻",
+        "daily_bars": "同步个股日线"
+      },
+      "daily": {
+        "codeLabel": "股票代码",
+        "daysLabel": "天数",
+        "button": "同步日线",
+        "hint": "≈1–3 秒/只 · 建议 ≤ 365 天"
+      },
+      "errors": {
+        "unknown": "未知错误，请查看后端日志"
+      }
+    },
+    "syncRuns": {
+      "title": "同步任务记录",
+      "empty": "暂无同步记录，等待首个 Celery 任务触发后这里会出现执行记录。",
+      "columns": {
+        "job": "任务",
+        "target": "目标",
+        "status": "状态",
+        "started": "启动时间",
+        "duration": "耗时",
+        "synced": "同步条数",
+        "error": "错误信息"
+      },
+      "status": {
+        "success": "成功",
+        "failed": "失败",
+        "running": "执行中",
+        "skipped": "已跳过"
+      },
+      "filter": {
+        "label": "按任务过滤",
+        "all": "全部任务"
+      }
+    },
+    "botLogs": {
+      "title": "Bot 命令调用",
+      "empty": "暂无 Bot 命令调用记录，飞书 Bot 触发命令后这里会出现流水。",
+      "columns": {
+        "platform": "平台",
+        "command": "命令",
+        "args": "参数",
+        "chat": "会话",
+        "user": "用户",
+        "status": "状态",
+        "duration": "耗时",
+        "at": "调用时间"
+      }
+    }
   },
   "sidebar": {
     "theme_label": "主题模式"

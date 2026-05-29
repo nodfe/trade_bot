@@ -9,6 +9,7 @@ import {
   TestTube2,
   Users,
   Settings,
+  Activity,
 } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 
@@ -57,6 +58,10 @@ const navItems = [
     icon: Users,
   },
   {
+    href: "/system",
+    icon: Activity,
+  },
+  {
     href: "/settings",
     icon: Settings,
   },
@@ -70,6 +75,7 @@ const navKeys: Record<string, string> = {
   "/watchlists": "watchlists",
   "/backtests": "backtests",
   "/users": "users",
+  "/system": "system",
   "/settings": "settings",
 }
 

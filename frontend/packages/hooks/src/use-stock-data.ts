@@ -173,10 +173,14 @@ export interface NewsItem {
   published_at: string | null;
 }
 
-/** Parameters accepted by the K-line (candlestick) endpoint. */
+/** Parameters accepted by the K-line (candlestick) endpoint.
+ *
+ * Backend currently stores daily bars and resamples server-side for weekly /
+ * monthly. Intraday periods are intentionally not supported until intraday
+ * ingestion lands. */
 export interface StockKlineParams {
   symbol: string;
-  period?: "1m" | "5m" | "15m" | "30m" | "60m" | "1d" | "1w" | "1M";
+  period?: "daily" | "weekly" | "monthly";
   start?: string;
   end?: string;
   limit?: number;

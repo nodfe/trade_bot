@@ -231,11 +231,13 @@ def test_stock_kline_endpoint(monkeypatch):
         start_date: date | None = None,
         end_date: date | None = None,
         limit: int = 120,
+        period: str = "daily",
     ):
         assert code == "600519"
         assert limit == 2
         assert start_date == date(2026, 5, 26)
         assert end_date == date(2026, 5, 27)
+        assert period == "daily"
         return [
             SimpleNamespace(
                 trade_date=date(2026, 5, 26),

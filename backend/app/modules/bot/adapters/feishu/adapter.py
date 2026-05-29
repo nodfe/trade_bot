@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any
 
@@ -30,6 +31,7 @@ class FeishuAdapter(BotAdapter):
         self.app_secret = settings.feishu_app_secret
         self.client: lark.Client | None = None
         self.ws_client: lark.ws.Client | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
 
     @property
     def platform_name(self) -> str:
@@ -37,6 +39,11 @@ class FeishuAdapter(BotAdapter):
 
     async def start(self) -> None:
         """Initialize the lark client and start the WebSocket event stream."""
+        # Capture the running event loop so SDK callbacks (which run in a
+        # daemon thread, NOT this loop) can dispatch coroutines safely via
+        # asyncio.run_coroutine_threadsafe.
+        self._loop = asyncio.get_running_loop()
+
         self.client = lark.Client(
             app_id=self.app_id,
             app_secret=self.app_secret,
@@ -47,9 +54,6 @@ class FeishuAdapter(BotAdapter):
         def on_message_recv(ctx: lark.Context, conf: lark.Config, event: Any) -> None:
             self._handle_message_event(event)
 
-        def on_card_action(ctx: lark.Context, conf: lark.Config, event: Any) -> None:
-            self._handle_card_event(event)
-
         self.ws_client = lark.ws.Client(
             self.app_id,
             self.app_secret,
@@ -57,8 +61,19 @@ class FeishuAdapter(BotAdapter):
             log_level=lark.LogLevel.DEBUG,
         )
 
-        # Register card action callback
-        self.ws_client.card_handler = on_card_action
+        # TODO(feishu-card-action): wire card-action callback via the
+        # lark-oapi v2 EventDispatcherHandler
+        # (EventDispatcherHandler.builder().register_p2_card_action_trigger_v1(...))
+        # passed into ws.Client(event_handler=dispatcher). The previous
+        # `ws_client.card_handler = ...` assignment was a no-op (no such
+        # public attribute in lark-oapi v2), so card buttons were silently
+        # not dispatched. Removed to make the gap visible.
+        # See https://github.com/larksuite/oapi-sdk-python
+        logger.warning(
+            "Feishu card-action handler not registered yet — interactive card "
+            "buttons will be no-ops until lark-oapi EventDispatcher wiring "
+            "lands. See TODO(feishu-card-action)."
+        )
 
         logger.info("FeishuAdapter starting WebSocket connection...")
         # ws_client.start() is blocking; run it in a background thread
@@ -157,8 +172,6 @@ class FeishuAdapter(BotAdapter):
 
     def _handle_message_event(self, event: Any) -> None:
         """Parse im.message.receive_v1 event and dispatch to registered callbacks."""
-        import asyncio
-
         try:
             event_data = event.event if hasattr(event, "event") else event
             msg = event_data.message
@@ -190,19 +203,20 @@ class FeishuAdapter(BotAdapter):
                 },
             )
 
-            # Dispatch from SDK thread to async event loop
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                asyncio.ensure_future(self._dispatch_message(bot_msg))
-            else:
-                loop.run_until_complete(self._dispatch_message(bot_msg))
+            # Dispatch from SDK thread to the FastAPI event loop captured at start().
+            if self._loop is None or not self._loop.is_running():
+                logger.error(
+                    "FeishuAdapter event loop missing or not running; dropping message"
+                )
+                return
+            asyncio.run_coroutine_threadsafe(
+                self._dispatch_message(bot_msg), self._loop
+            )
         except Exception as e:
             logger.error(f"Error handling Feishu message event: {e}")
 
     def _handle_card_event(self, event: Any) -> None:
         """Parse card action callback event."""
-        import asyncio
-
         try:
             action = event.action if hasattr(event, "action") else event
             action_value = ""
@@ -221,10 +235,13 @@ class FeishuAdapter(BotAdapter):
                 },
             )
 
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                asyncio.ensure_future(self._dispatch_card_action(card_action))
-            else:
-                loop.run_until_complete(self._dispatch_card_action(card_action))
+            if self._loop is None or not self._loop.is_running():
+                logger.error(
+                    "FeishuAdapter event loop missing or not running; dropping card action"
+                )
+                return
+            asyncio.run_coroutine_threadsafe(
+                self._dispatch_card_action(card_action), self._loop
+            )
         except Exception as e:
             logger.error(f"Error handling Feishu card event: {e}")
