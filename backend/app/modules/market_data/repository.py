@@ -49,6 +49,16 @@ class MarketDataRepository:
             )
             return result.scalar_one_or_none()
 
+    async def get_codes_with_daily_bars(self) -> set[str]:
+        """Return distinct stock codes that have at least one row in `daily_bars`.
+
+        Used by the screener to skip stocks with no local data instead of
+        falling back to remote API calls (which would block sequentially).
+        """
+        async with async_session_factory() as session:
+            result = await session.execute(select(DailyBar.code).distinct())
+            return set(result.scalars().all())
+
     async def get_latest_trade_date_for_dragon_tiger(self) -> date | None:
         async with async_session_factory() as session:
             result = await session.execute(
