@@ -116,8 +116,12 @@ class MarketDataService:
         end_date: date | None = None,
         limit: int = 120,
         period: str = "daily",
+        *,
+        local_only: bool = False,
     ) -> list[DailyBar]:
-        bars = await self.get_daily_bars(code, start_date, end_date)
+        bars = await self.get_daily_bars(
+            code, start_date, end_date, local_only=local_only
+        )
         bars_sorted = sorted(bars, key=lambda bar: bar.trade_date)
         if period != "daily":
             bars_sorted = self._resample_bars(bars_sorted, period)
@@ -183,8 +187,10 @@ class MarketDataService:
             for idx, row in agg.iterrows()
         ]
 
-    async def get_stock_analysis_summary(self, code: str) -> StockAnalysisSummaryOut | None:
-        bars = await self.get_stock_kline(code, limit=20)
+    async def get_stock_analysis_summary(
+        self, code: str, *, local_only: bool = False
+    ) -> StockAnalysisSummaryOut | None:
+        bars = await self.get_stock_kline(code, limit=20, local_only=local_only)
         if len(bars) < 5:
             return None
 
@@ -294,6 +300,11 @@ class MarketDataService:
         screen_type = screen_type.lower().strip()
         params = params or StockScreenParams()
         stocks = await self.repo.get_stocks()
+        # Restrict scan to stocks with local daily-bar data. Without this guard
+        # we would call `facade.get_daily_bars` for every stock missing bars,
+        # serializing 200+ remote requests and blocking the endpoint.
+        codes_with_bars = await self.repo.get_codes_with_daily_bars()
+        candidate_stocks = [s for s in stocks if s.code in codes_with_bars]
         matches: list[StockScreenItemOut] = []
 
         latest_dragon_tiger_date = await self.repo.get_latest_trade_date_for_dragon_tiger()
@@ -320,8 +331,10 @@ class MarketDataService:
                     continue
                 news_by_code.setdefault(item.code, []).append(item.title)
 
-        for stock in stocks[:200]:
-            analysis = await self.get_stock_analysis_summary(stock.code)
+        for stock in candidate_stocks[:200]:
+            analysis = await self.get_stock_analysis_summary(
+                stock.code, local_only=True
+            )
             if not analysis:
                 continue
 
@@ -608,7 +621,12 @@ class MarketDataService:
         )
 
     async def get_daily_bars(
-        self, code: str, start_date: date | None = None, end_date: date | None = None
+        self,
+        code: str,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        *,
+        local_only: bool = False,
     ) -> list[DailyBar]:
         if not end_date:
             end_date = date.today()
@@ -618,6 +636,9 @@ class MarketDataService:
         bars = await self.repo.get_daily_bars(code, start_date, end_date)
         if bars:
             return bars
+
+        if local_only:
+            return []
 
         bar_dtos = await self.facade.get_daily_bars(code, start_date, end_date)
         return [
