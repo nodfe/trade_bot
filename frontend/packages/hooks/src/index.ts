@@ -51,6 +51,8 @@ export type {
 export {
   useRunBacktest,
   useEligibleBacktestCodes,
+  useRunScreenerBacktest,
+  useScreenerPreview,
   ApiError,
 } from "./use-backtests";
 export type {
@@ -59,4 +61,16 @@ export type {
   BacktestTrade,
   EquityPoint,
   EligibleCode,
+  ScreenerType,
+  RebalanceCadence,
+  WeightingMode,
+  BenchmarkMode,
+  RebalanceTradeReason,
+  ScreenerBacktestRequest,
+  ScreenerBacktestResult,
+  ScreenerBacktestTrade,
+  HoldingItem,
+  HoldingSnapshot,
+  DrawdownPoint,
+  CostBreakdown,
 } from "./use-backtests";

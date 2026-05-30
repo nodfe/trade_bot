@@ -118,6 +118,41 @@ class MarketDataRepository:
             result = await session.execute(stmt.limit(500))
             return list(result.scalars().all())
 
+    async def get_daily_bars_for_codes(
+        self,
+        codes: list[str],
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> dict[str, list[DailyBar]]:
+        """Bulk-load daily bars for multiple codes.
+
+        Returns a dict keyed by stock code, with bars sorted ASC by trade_date.
+        Codes are chunked at 500 to avoid hitting parameter binding limits on
+        very wide IN clauses.
+        """
+        if not codes:
+            return {}
+
+        result_map: dict[str, list[DailyBar]] = {code: [] for code in codes}
+        chunk_size = 500
+        async with async_session_factory() as session:
+            for i in range(0, len(codes), chunk_size):
+                chunk = codes[i : i + chunk_size]
+                stmt = (
+                    select(DailyBar)
+                    .where(DailyBar.code.in_(chunk))
+                    .order_by(DailyBar.code, DailyBar.trade_date.asc())
+                )
+                if start_date:
+                    stmt = stmt.where(DailyBar.trade_date >= start_date)
+                if end_date:
+                    stmt = stmt.where(DailyBar.trade_date <= end_date)
+                rows = await session.execute(stmt)
+                for bar in rows.scalars().all():
+                    result_map.setdefault(bar.code, []).append(bar)
+
+        return result_map
+
     async def save_stocks(self, stocks: list[Stock]) -> int:
         async with async_session_factory() as session:
             for stock in stocks:
