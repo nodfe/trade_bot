@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import exists, select
+from sqlalchemy import exists, func, select
 
 from app.core.database import async_session_factory
 from app.modules.market_data.models import DailyBar, DailyNews, DragonTigerList, LimitUpBoard, Stock
@@ -58,6 +58,24 @@ class MarketDataRepository:
         async with async_session_factory() as session:
             result = await session.execute(select(DailyBar.code).distinct())
             return set(result.scalars().all())
+
+    async def get_eligible_backtest_codes(self) -> list[tuple[str, str, int]]:
+        """Return `(code, name, bar_count)` for every stock with locally synced bars.
+
+        Joins `daily_bars` aggregate counts against the `stocks` table so the UI
+        can present a meaningful name beside each code. Sorted by bar_count DESC
+        so the most-data-rich stocks appear first.
+        """
+        async with async_session_factory() as session:
+            bar_count = func.count(DailyBar.id).label("bar_count")
+            stmt = (
+                select(DailyBar.code, Stock.name, bar_count)
+                .join(Stock, Stock.code == DailyBar.code, isouter=True)
+                .group_by(DailyBar.code, Stock.name)
+                .order_by(bar_count.desc(), DailyBar.code)
+            )
+            result = await session.execute(stmt)
+            return [(row[0], row[1] or "", int(row[2])) for row in result.all()]
 
     async def get_latest_trade_date_for_dragon_tiger(self) -> date | None:
         async with async_session_factory() as session:

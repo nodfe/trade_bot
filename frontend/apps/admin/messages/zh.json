@@ -306,17 +306,23 @@
       "slow_period": "慢线周期",
       "initial_capital": "初始资金 (CNY)",
       "submit": "运行回测",
-      "running": "回测运行中..."
+      "running": "回测运行中...",
+      "code_eligible_count": "已同步日线: {count} 只",
+      "code_eligible_empty": "尚未同步任何日线",
+      "code_eligible_link": "前往系统状态触发同步",
+      "code_resolved_name": "已识别: {name}"
     },
     "errors": {
       "code_required": "请填写股票代码。",
       "dates_required": "请选择开始日期与结束日期。",
       "dates_invalid": "结束日期必须晚于开始日期。",
       "periods_invalid": "快线周期必须小于慢线周期。",
-      "request_failed": "回测请求失败，请确认所选区间该标的有足够日线数据。"
+      "request_failed": "回测请求失败，请确认所选区间该标的有足够日线数据。",
+      "insufficient_bars": "所选区间日线数据不足，请缩小区间或先在系统状态页同步该股票"
     },
     "results": {
       "title": "回测结果",
+      "title_with_name": "回测结果 — {name} ({code})",
       "total_return": "累计收益",
       "annualized_return": "年化收益",
       "win_rate": "胜率",
@@ -330,6 +336,8 @@
       "trades_title": "买卖交易明细",
       "trades_description": "策略触发的每一次完整进出场配对。",
       "no_trades": "所选窗口内策略未触发任何交易。",
+      "no_trades_banner_title": "策略未触发任何交易",
+      "no_trades_banner_hint": "可能因为信号不足、区间过短或周期组合不合适。可尝试拉长时间窗口、调整快慢线周期或选择波动更大的标的。",
       "columns": {
         "entry_date": "买入日期",
         "entry_price": "买入价",

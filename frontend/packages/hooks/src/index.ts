@@ -48,10 +48,15 @@ export type {
   SyncResult,
   SyncJobKind,
 } from "./use-system-data";
-export { useRunBacktest } from "./use-backtests";
+export {
+  useRunBacktest,
+  useEligibleBacktestCodes,
+  ApiError,
+} from "./use-backtests";
 export type {
   BacktestRequest,
   BacktestResult,
   BacktestTrade,
   EquityPoint,
+  EligibleCode,
 } from "./use-backtests";
