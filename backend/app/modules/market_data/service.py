@@ -118,7 +118,13 @@ class MarketDataService:
         period: str = "daily",
         *,
         local_only: bool = False,
+        as_of_date: date | None = None,
     ) -> list[DailyBar]:
+        # When `as_of_date` is set it overrides any explicit end_date so the
+        # caller gets a strictly historical view (used by the screener
+        # walk-forward backtest engine).
+        if as_of_date is not None:
+            end_date = as_of_date
         bars = await self.get_daily_bars(
             code, start_date, end_date, local_only=local_only
         )
@@ -188,9 +194,11 @@ class MarketDataService:
         ]
 
     async def get_stock_analysis_summary(
-        self, code: str, *, local_only: bool = False
+        self, code: str, *, local_only: bool = False, as_of_date: date | None = None
     ) -> StockAnalysisSummaryOut | None:
-        bars = await self.get_stock_kline(code, limit=20, local_only=local_only)
+        bars = await self.get_stock_kline(
+            code, limit=20, local_only=local_only, as_of_date=as_of_date
+        )
         if len(bars) < 5:
             return None
 
@@ -296,6 +304,8 @@ class MarketDataService:
         self,
         screen_type: str,
         params: StockScreenParams | None = None,
+        *,
+        as_of_date: date | None = None,
     ) -> StockScreenResultOut:
         screen_type = screen_type.lower().strip()
         params = params or StockScreenParams()
@@ -307,33 +317,42 @@ class MarketDataService:
         candidate_stocks = [s for s in stocks if s.code in codes_with_bars]
         matches: list[StockScreenItemOut] = []
 
-        latest_dragon_tiger_date = await self.repo.get_latest_trade_date_for_dragon_tiger()
-        latest_limit_up_date = await self.repo.get_latest_trade_date_for_limit_up()
-        latest_news_date = await self.repo.get_latest_trade_date_for_news()
+        # In as-of-date mode (used by the walk-forward backtest engine) we
+        # SKIP dragon_tiger / limit_up / news enrichment because those data
+        # sources are "current state" decorators that cannot be reconstructed
+        # for an arbitrary historical date and are not part of the matching
+        # logic. The output preserves the same StockScreenItemOut shape with
+        # empty enrichment fields.
+        historical_mode = as_of_date is not None
 
         dragon_tiger_map: dict[str, DragonTigerList] = {}
-        if latest_dragon_tiger_date:
-            dragon_tiger_map = {
-                item.code: item
-                for item in await self.repo.get_dragon_tiger_list(latest_dragon_tiger_date)
-            }
-
         limit_up_map: dict[str, LimitUpBoard] = {}
-        if latest_limit_up_date:
-            limit_up_map = {
-                item.code: item for item in await self.repo.get_limit_up_board(latest_limit_up_date)
-            }
-
         news_by_code: dict[str, list[str]] = {}
-        if latest_news_date:
-            for item in await self.repo.get_daily_news(latest_news_date, limit=100):
-                if not item.code:
-                    continue
-                news_by_code.setdefault(item.code, []).append(item.title)
+
+        if not historical_mode:
+            latest_dragon_tiger_date = await self.repo.get_latest_trade_date_for_dragon_tiger()
+            latest_limit_up_date = await self.repo.get_latest_trade_date_for_limit_up()
+            latest_news_date = await self.repo.get_latest_trade_date_for_news()
+
+            if latest_dragon_tiger_date:
+                dragon_tiger_map = {
+                    item.code: item
+                    for item in await self.repo.get_dragon_tiger_list(latest_dragon_tiger_date)
+                }
+            if latest_limit_up_date:
+                limit_up_map = {
+                    item.code: item
+                    for item in await self.repo.get_limit_up_board(latest_limit_up_date)
+                }
+            if latest_news_date:
+                for item in await self.repo.get_daily_news(latest_news_date, limit=100):
+                    if not item.code:
+                        continue
+                    news_by_code.setdefault(item.code, []).append(item.title)
 
         for stock in candidate_stocks[:200]:
             analysis = await self.get_stock_analysis_summary(
-                stock.code, local_only=True
+                stock.code, local_only=True, as_of_date=as_of_date
             )
             if not analysis:
                 continue

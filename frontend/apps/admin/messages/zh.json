@@ -348,7 +348,80 @@
         "holding_days": "持仓天数"
       }
     },
-    "empty": "在上方配置参数并运行回测，结果将展示在此。"
+    "empty": "在上方配置参数并运行回测，结果将展示在此。",
+    "tabs": {
+      "single": "单股回测",
+      "screener": "选股策略回测"
+    },
+    "screener": {
+      "subtitle": "运行选股策略并按计划周期再平衡，模拟组合化历史表现。",
+      "form": {
+        "strategy": "选股策略",
+        "rebalance": "再平衡频率",
+        "rebalance_options": {
+          "daily": "每个交易日",
+          "weekly": "每周",
+          "biweekly": "每两周",
+          "monthly": "每月"
+        },
+        "top_n": "持仓数量",
+        "weighting": "权重方式",
+        "weighting_options": {
+          "equal": "等权重",
+          "score": "分数加权"
+        },
+        "stop_loss": "止损 (%)",
+        "take_profit": "止盈 (%)",
+        "initial_capital": "初始资金 (CNY)",
+        "commission_rate": "佣金费率 (%)",
+        "stamp_duty_rate": "印花税 (%)",
+        "slippage_rate": "滑点率 (%)",
+        "benchmark": "基准对照",
+        "benchmark_options": {
+          "none": "不使用基准",
+          "universe_buy_hold": "全市场等权买入持有"
+        },
+        "submit": "运行选股回测",
+        "running": "正在运行...",
+        "cost_advanced_title": "高级成本模型",
+        "cost_advanced_hint": "佣金 / 印花税 / 滑点的小数费率，按交易额比例扣减。",
+        "risk_section_title": "风险控制（可选）",
+        "optional_hint": "(可选)"
+      },
+      "preview": {
+        "title": "策略当日选股预览（截至结束日期）",
+        "empty": "该日期下未匹配到任何标的，可先调整阈值或日期。",
+        "loading": "正在生成预览..."
+      },
+      "results": {
+        "drawdown_title": "净值回撤曲线",
+        "drawdown_desc": "实时跟踪当前净值距历史峰值的回撤百分比。",
+        "holdings_timeline_title": "再平衡持仓数变化",
+        "holdings_timeline_desc": "每个再平衡日的实际持仓只数，反映组合集中度演变。",
+        "costs_title": "交易成本分解",
+        "total_commission": "累计佣金",
+        "total_stamp_duty": "累计印花税",
+        "total_slippage": "滑点损耗",
+        "cost_drag": "成本拖累",
+        "benchmark_label": "基准曲线",
+        "strategy_label": "策略曲线",
+        "trades_columns": {
+          "name": "名称",
+          "exit_reason": "退出原因"
+        },
+        "holdings_history_title": "再平衡持仓历史",
+        "holdings_history_collapse": "收起",
+        "holdings_history_expand": "展开",
+        "no_benchmark": "未启用基准对照"
+      },
+      "exit_reason": {
+        "screener_pick": "策略入选",
+        "screener_drop": "策略剔除",
+        "stop_loss": "触发止损",
+        "take_profit": "触发止盈",
+        "final_close": "终点平仓"
+      }
+    }
   },
   "settings": {
     "title": "系统配置",

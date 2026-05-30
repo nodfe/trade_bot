@@ -348,7 +348,80 @@
         "holding_days": "Days Held"
       }
     },
-    "empty": "Configure parameters above and run a backtest to see results."
+    "empty": "Configure parameters above and run a backtest to see results.",
+    "tabs": {
+      "single": "Single Stock",
+      "screener": "Screener Walk-Forward"
+    },
+    "screener": {
+      "subtitle": "Run a screener on a schedule and hold the picks — simulate the portfolio's historical P&L end-to-end.",
+      "form": {
+        "strategy": "Screener Strategy",
+        "rebalance": "Rebalance Cadence",
+        "rebalance_options": {
+          "daily": "Every Trading Day",
+          "weekly": "Weekly",
+          "biweekly": "Bi-weekly",
+          "monthly": "Monthly"
+        },
+        "top_n": "Top N Holdings",
+        "weighting": "Weighting",
+        "weighting_options": {
+          "equal": "Equal Weight",
+          "score": "Score Weighted"
+        },
+        "stop_loss": "Stop Loss (%)",
+        "take_profit": "Take Profit (%)",
+        "initial_capital": "Initial Capital (CNY)",
+        "commission_rate": "Commission Rate (%)",
+        "stamp_duty_rate": "Stamp Duty (%)",
+        "slippage_rate": "Slippage (%)",
+        "benchmark": "Benchmark",
+        "benchmark_options": {
+          "none": "No Benchmark",
+          "universe_buy_hold": "Equal-weight Universe Buy & Hold"
+        },
+        "submit": "Run Screener Backtest",
+        "running": "Running...",
+        "cost_advanced_title": "Advanced Cost Model",
+        "cost_advanced_hint": "Decimal rates for commission / stamp duty / slippage, applied per trade.",
+        "risk_section_title": "Risk Controls (optional)",
+        "optional_hint": "(optional)"
+      },
+      "preview": {
+        "title": "Screener picks at end-date (preview)",
+        "empty": "No matches at this date — try a different anchor date or adjust thresholds.",
+        "loading": "Generating preview..."
+      },
+      "results": {
+        "drawdown_title": "Equity Drawdown",
+        "drawdown_desc": "Live drawdown percentage measured against the running peak equity.",
+        "holdings_timeline_title": "Holdings Count Per Rebalance",
+        "holdings_timeline_desc": "Number of held names at each rebalance — reflects concentration changes.",
+        "costs_title": "Transaction Cost Breakdown",
+        "total_commission": "Total Commission",
+        "total_stamp_duty": "Total Stamp Duty",
+        "total_slippage": "Total Slippage",
+        "cost_drag": "Cost Drag",
+        "benchmark_label": "Benchmark",
+        "strategy_label": "Strategy",
+        "trades_columns": {
+          "name": "Name",
+          "exit_reason": "Exit Reason"
+        },
+        "holdings_history_title": "Rebalance Holdings History",
+        "holdings_history_collapse": "Collapse",
+        "holdings_history_expand": "Expand",
+        "no_benchmark": "Benchmark disabled"
+      },
+      "exit_reason": {
+        "screener_pick": "Screener Pick",
+        "screener_drop": "Screener Drop",
+        "stop_loss": "Stop Loss",
+        "take_profit": "Take Profit",
+        "final_close": "Final Close"
+      }
+    }
   },
   "settings": {
     "title": "System Settings",
