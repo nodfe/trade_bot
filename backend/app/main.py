@@ -10,6 +10,7 @@ from app.modules.backtests.router import router as backtests_router
 from app.modules.bot.router import router as bot_router
 from app.modules.bot.service import BotService
 from app.modules.market_data.router import router as market_router
+from app.modules.strategies.router import router as strategies_router
 from app.modules.sync_runs.router import router as sync_runs_router
 from app.modules.watchlist.router import router as watchlist_router
 from app.shared.errors import install_error_handlers
@@ -56,6 +57,7 @@ app.include_router(bot_router, prefix="/api/v1")
 app.include_router(watchlist_router, prefix="/api/v1")
 app.include_router(sync_runs_router, prefix="/api/v1")
 app.include_router(backtests_router, prefix="/api/v1")
+app.include_router(strategies_router, prefix="/api/v1")
 
 
 @app.get("/health")

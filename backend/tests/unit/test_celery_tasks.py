@@ -183,6 +183,7 @@ EXPECTED_SCHEDULE = {
     "sync-daily-bars-batch": "market_data.sync_daily_bars_batch",
     "sync-dragon-tiger-daily": "market_data.sync_dragon_tiger_list",
     "sync-news-daily": "market_data.sync_daily_news",
+    "compute-strategy-kpi-snapshots-daily": "strategies.compute_kpi_snapshots",
 }
 
 

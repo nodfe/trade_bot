@@ -192,7 +192,39 @@
     "card": {
       "defaults_title": "Default Thresholds",
       "use_case_title": "Best For",
-      "run_in_screener": "Run in Screener"
+      "run_in_screener": "Run in Screener",
+      "backtest_cta": "Backtest this strategy",
+      "detail_cta": "View details"
+    },
+    "tags": {
+      "trend_following": "Trend Following",
+      "momentum": "Momentum",
+      "mean_reversion": "Mean Reversion",
+      "volume": "Volume",
+      "trending_market": "Trending Market",
+      "ranging_market": "Ranging Market",
+      "volatile_market": "Volatile Market"
+    },
+    "tag_groups": {
+      "factor": "Factor",
+      "regime": "Regime"
+    },
+    "filter": {
+      "all": "All"
+    },
+    "kpi": {
+      "annualized_return": "Annualized Return",
+      "sharpe": "Sharpe",
+      "max_drawdown": "Max Drawdown",
+      "win_rate": "Win Rate",
+      "as_of": "As of {date}",
+      "no_data": "No backtest KPIs computed yet"
+    },
+    "drawer": {
+      "title": "Strategy Details",
+      "description": "Review the strategy rationale, default thresholds, and run an embedded historical backtest right here.",
+      "params_title": "Default Parameters",
+      "backtest_section_title": "Embedded Backtest"
     },
     "params": {
       "min_return_20d_pct": "Min 20D Return",

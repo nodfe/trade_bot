@@ -192,7 +192,39 @@
     "card": {
       "defaults_title": "默认阈值",
       "use_case_title": "适用场景",
-      "run_in_screener": "在选股器中运行"
+      "run_in_screener": "在选股器中运行",
+      "backtest_cta": "回测此策略",
+      "detail_cta": "查看详情"
+    },
+    "tags": {
+      "trend_following": "趋势跟踪",
+      "momentum": "动量",
+      "mean_reversion": "均值回归",
+      "volume": "量能",
+      "trending_market": "趋势行情",
+      "ranging_market": "震荡行情",
+      "volatile_market": "高波动行情"
+    },
+    "tag_groups": {
+      "factor": "因子",
+      "regime": "适合行情"
+    },
+    "filter": {
+      "all": "全部"
+    },
+    "kpi": {
+      "annualized_return": "年化收益率",
+      "sharpe": "Sharpe",
+      "max_drawdown": "最大回撤",
+      "win_rate": "胜率",
+      "as_of": "截至 {date}",
+      "no_data": "尚未生成回测 KPI，敬请稍候"
+    },
+    "drawer": {
+      "title": "策略详情",
+      "description": "查看策略原理、默认阈值并直接在此运行历史回测。",
+      "params_title": "默认参数",
+      "backtest_section_title": "嵌入式回测"
     },
     "params": {
       "min_return_20d_pct": "最小 20 日涨幅",

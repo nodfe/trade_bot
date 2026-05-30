@@ -10,6 +10,7 @@ celery_app = Celery(
     include=[
         "app.modules.market_data.tasks",
         "app.modules.watchlist.tasks",
+        "app.modules.strategies.tasks",
     ],
 )
 
@@ -20,6 +21,7 @@ celery_app.autodiscover_tasks(
     [
         "app.modules.market_data",
         "app.modules.watchlist",
+        "app.modules.strategies",
     ]
 )
 
@@ -65,5 +67,12 @@ celery_app.conf.beat_schedule = {
     "sync-news-daily": {
         "task": "market_data.sync_daily_news",
         "schedule": crontab(hour=12, minute=0, day_of_week="*"),
+    },
+    # Strategy KPI snapshots — every day 17:00 CST (09:00 UTC), after the
+    # daily-bars batch has settled, so the screener walk-forward backtest
+    # has fresh inputs.
+    "compute-strategy-kpi-snapshots-daily": {
+        "task": "strategies.compute_kpi_snapshots",
+        "schedule": crontab(hour=9, minute=0, day_of_week="*"),
     },
 }

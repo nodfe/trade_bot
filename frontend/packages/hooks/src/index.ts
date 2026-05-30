@@ -74,3 +74,18 @@ export type {
   DrawdownPoint,
   CostBreakdown,
 } from "./use-backtests";
+export {
+  useStrategies,
+  STRATEGY_FACTOR_TAGS,
+  STRATEGY_REGIME_TAGS,
+} from "./use-strategies";
+export type {
+  Strategy,
+  StrategyKey,
+  StrategyKpi,
+  StrategyTag,
+  StrategyFactorTag,
+  StrategyRegimeTag,
+  SparklinePoint,
+  StrategiesResponse,
+} from "./use-strategies";
