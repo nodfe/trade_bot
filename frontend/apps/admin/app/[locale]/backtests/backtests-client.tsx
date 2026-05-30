@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import {
   Card,
@@ -11,13 +12,17 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
+  ApiError,
+  useEligibleBacktestCodes,
   useRunBacktest,
   type BacktestResult,
   type BacktestTrade,
+  type EligibleCode,
 } from "@quant/hooks"
 import {
   Activity,
   AlertCircle,
+  AlertTriangle,
   BarChart3,
   FlaskConical,
   Loader2,
@@ -75,7 +80,7 @@ export function BacktestsClient() {
   const locale = useLocale()
 
   const [code, setCode] = useState("600519")
-  const [startDate, setStartDate] = useState(isoDaysAgo(365))
+  const [startDate, setStartDate] = useState(isoDaysAgo(120))
   const [endDate, setEndDate] = useState(todayIso())
   const [fastPeriod, setFastPeriod] = useState(5)
   const [slowPeriod, setSlowPeriod] = useState(20)
@@ -83,6 +88,33 @@ export function BacktestsClient() {
   const [validationError, setValidationError] = useState<string | null>(null)
 
   const { mutate, data, error, isPending, reset } = useRunBacktest()
+  const { data: eligibleCodes, isLoading: eligibleLoading } =
+    useEligibleBacktestCodes()
+
+  // Auto-set the first eligible code only if the user hasn't manually edited
+  // the field yet. We track this with a ref to avoid re-running on every keystroke.
+  const userEditedCodeRef = useRef(false)
+  useEffect(() => {
+    if (userEditedCodeRef.current) return
+    if (!eligibleCodes || eligibleCodes.length === 0) return
+    const first = eligibleCodes[0]
+    if (first && first.code !== code) {
+      setCode(first.code)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eligibleCodes])
+
+  const eligibleByCode = useMemo(() => {
+    const map = new Map<string, EligibleCode>()
+    if (eligibleCodes) {
+      for (const item of eligibleCodes) {
+        map.set(item.code, item)
+      }
+    }
+    return map
+  }, [eligibleCodes])
+
+  const resolvedName = eligibleByCode.get(code.trim())?.name ?? null
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -115,6 +147,14 @@ export function BacktestsClient() {
     })
   }
 
+  const isInsufficientBars =
+    error instanceof ApiError && error.status === 404
+  const errorMessage = error
+    ? isInsufficientBars
+      ? t("errors.insufficient_bars")
+      : t("errors.request_failed")
+    : null
+
   return (
     <div className="space-y-6">
       <div>
@@ -142,10 +182,49 @@ export function BacktestsClient() {
                 <input
                   type="text"
                   value={code}
-                  onChange={(e) => setCode(e.target.value)}
+                  onChange={(e) => {
+                    userEditedCodeRef.current = true
+                    setCode(e.target.value)
+                  }}
                   placeholder={t("form.code_placeholder")}
+                  list="bt-eligible-codes"
                   className="w-full rounded-md border bg-background/40 px-3 py-2 text-sm font-mono"
                 />
+                {eligibleCodes && eligibleCodes.length > 0 ? (
+                  <datalist id="bt-eligible-codes">
+                    {eligibleCodes.map((item) => (
+                      <option key={item.code} value={item.code}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </datalist>
+                ) : null}
+                {!eligibleLoading ? (
+                  <div className="flex items-center justify-between gap-2 pt-1 text-[10px] text-muted-foreground/80">
+                    {eligibleCodes && eligibleCodes.length > 0 ? (
+                      <span>
+                        {t("form.code_eligible_count", {
+                          count: eligibleCodes.length,
+                        })}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        <span>{t("form.code_eligible_empty")}</span>
+                        <Link
+                          href={`/${locale}/system`}
+                          className="underline underline-offset-2 hover:text-primary"
+                        >
+                          {t("form.code_eligible_link")}
+                        </Link>
+                      </span>
+                    )}
+                    {resolvedName ? (
+                      <span className="truncate text-foreground/70">
+                        {t("form.code_resolved_name", { name: resolvedName })}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
               </FieldLabel>
               <FieldLabel label={t("form.start_date")}>
                 <input
@@ -167,10 +246,15 @@ export function BacktestsClient() {
                 <select
                   value="ma_cross"
                   disabled
-                  className="w-full rounded-md border bg-background/40 px-3 py-2 text-sm"
+                  aria-disabled="true"
+                  title={t("form.strategy_locked_hint")}
+                  className="w-full rounded-md border bg-background/40 px-3 py-2 text-sm cursor-not-allowed opacity-70"
                 >
                   <option value="ma_cross">{t("form.strategy_ma_cross")}</option>
                 </select>
+                <div className="pt-1 text-[10px] text-muted-foreground/80">
+                  {t("form.strategy_locked_hint")}
+                </div>
               </FieldLabel>
               <FieldLabel label={t("form.fast_period")}>
                 <input
@@ -211,10 +295,10 @@ export function BacktestsClient() {
               </div>
             ) : null}
 
-            {error ? (
+            {errorMessage ? (
               <div className="flex items-center gap-2 text-xs text-destructive">
                 <AlertCircle className="h-4 w-4" />
-                <span>{t("errors.request_failed")}</span>
+                <span>{errorMessage}</span>
               </div>
             ) : null}
 
@@ -239,7 +323,11 @@ export function BacktestsClient() {
 
       {/* Results */}
       {data ? (
-        <BacktestResults result={data} locale={locale} />
+        <BacktestResults
+          result={data}
+          locale={locale}
+          resolvedName={eligibleByCode.get(data.code)?.name ?? null}
+        />
       ) : !isPending ? (
         <Card className="premium-glass-card border border-dashed bg-background/20 shadow-none">
           <CardContent className="pt-6 pb-6">
@@ -274,12 +362,18 @@ function FieldLabel({
 function BacktestResults({
   result,
   locale,
+  resolvedName,
 }: {
   result: BacktestResult
   locale: string
+  resolvedName: string | null
 }) {
   const t = useTranslations("backtests")
   const na = t("results.na")
+
+  const titleText = resolvedName
+    ? t("results.title_with_name", { name: resolvedName, code: result.code })
+    : t("results.title")
 
   const kpis: { label: string; value: string; valueClass: string }[] = useMemo(
     () => [
@@ -324,12 +418,27 @@ function BacktestResults({
 
   return (
     <div className="space-y-6">
+      {/* No-trades banner */}
+      {result.trade_count === 0 ? (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <div className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+              {t("results.no_trades_banner_title")}
+            </div>
+            <div className="text-xs text-amber-700/90 dark:text-amber-200/80 leading-relaxed">
+              {t("results.no_trades_banner_hint")}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* KPI grid */}
       <Card className="premium-glass-card border bg-background/30 shadow-md">
         <CardHeader className="pb-3 border-b border-muted/30">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <Activity className="h-4 w-4 text-primary" />
-            {t("results.title")}
+            {titleText}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-4">

@@ -43,3 +43,11 @@ class BacktestResult(BaseModel):
     initial_capital: float
     trades: list[BacktestTrade]
     equity_curve: list[EquityPoint]
+
+
+class EligibleCodeOut(BaseModel):
+    """A stock with locally synced daily bars, eligible for backtesting."""
+
+    code: str
+    name: str
+    bar_count: int

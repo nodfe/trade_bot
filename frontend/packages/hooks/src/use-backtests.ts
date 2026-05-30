@@ -1,8 +1,10 @@
 import {
   useMutation,
+  useQuery,
   type UseMutationOptions,
+  type UseQueryOptions,
 } from "@tanstack/react-query";
-import { api } from "@quant/api-client";
+import { api, ApiError } from "@quant/api-client";
 
 // ---------------------------------------------------------------------------
 // Types — mirror backend Pydantic schemas exactly.
@@ -49,6 +51,13 @@ export interface BacktestResult {
   equity_curve: EquityPoint[];
 }
 
+/** Stock code with locally synced daily bars, returned by the eligibility endpoint. */
+export interface EligibleCode {
+  code: string;
+  name: string;
+  bar_count: number;
+}
+
 // ---------------------------------------------------------------------------
 // Hooks
 // ---------------------------------------------------------------------------
@@ -68,3 +77,23 @@ export function useRunBacktest(
     ...options,
   });
 }
+
+/**
+ * Fetch the list of stock codes that have local daily bars available for
+ * backtesting. Used to populate the autocomplete datalist on the form.
+ */
+export function useEligibleBacktestCodes(
+  options?: Omit<
+    UseQueryOptions<EligibleCode[], Error>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery<EligibleCode[], Error>({
+    queryKey: ["backtests", "eligible-codes"],
+    queryFn: () => api.get<EligibleCode[]>("/backtests/eligible-codes"),
+    staleTime: 60 * 1000,
+    ...options,
+  });
+}
+
+export { ApiError };
