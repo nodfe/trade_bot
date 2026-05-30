@@ -183,8 +183,32 @@
   },
   "strategies": {
     "title": "量化策略",
-    "subtitle": "策略管理与回测配置工作区（即将推出）",
-    "coming_soon": "策略管理功能即将推出，敬请期待。"
+    "subtitle": "内置选股策略目录：先了解原理，再到选股因子页执行。",
+    "coming_soon": "策略管理功能即将推出，敬请期待。",
+    "catalog": {
+      "title": "内置策略目录",
+      "description": "每个策略都是可复用的多因子扫描方案，可在 Screeners 选股页执行。调整阈值后即可保存为自选池。"
+    },
+    "card": {
+      "defaults_title": "默认阈值",
+      "use_case_title": "适用场景",
+      "run_in_screener": "在选股器中运行"
+    },
+    "params": {
+      "min_return_20d_pct": "最小 20 日涨幅",
+      "min_return_5d_pct": "最小 5 日涨幅",
+      "max_return_5d_pct": "最大 5 日涨幅",
+      "min_volume_ratio": "最小量比"
+    },
+    "use_cases": {
+      "strong_uptrend": "在已突破、量价共振、动量延续的标的上做趋势追踪进场。",
+      "volume_breakout": "捕捉机构介入引发的成交量异动，先于市场感知的脉冲式机会。",
+      "pullback_watch": "在确立的上行趋势里逢低吸纳：近期回踩，但 20 日仍处于上升通道。"
+    },
+    "custom": {
+      "title": "自定义策略（即将推出）",
+      "description": "未来将支持用户定义因子组合与定时扫描。当前先通过 Screeners 选股页调整内置策略参数。"
+    }
   },
   "watchlists": {
     "title": "量化自选池",
@@ -267,13 +291,90 @@
   },
   "backtests": {
     "title": "回测引擎",
-    "subtitle": "历史回测与策略验证工作区（即将推出）",
-    "coming_soon": "回测引擎功能即将推出，敬请期待。"
+    "subtitle": "单只个股的双均线交叉回测。计算结果只读，不写入数据库。",
+    "coming_soon": "回测引擎功能即将推出，敬请期待。",
+    "form": {
+      "title": "回测参数配置",
+      "description": "选择股票、时间窗口与均线周期，运行模拟的双均线金叉/死叉回测。",
+      "code": "股票代码",
+      "code_placeholder": "例如 600519",
+      "start_date": "开始日期",
+      "end_date": "结束日期",
+      "strategy": "策略",
+      "strategy_ma_cross": "双均线交叉",
+      "fast_period": "快线周期",
+      "slow_period": "慢线周期",
+      "initial_capital": "初始资金 (CNY)",
+      "submit": "运行回测",
+      "running": "回测运行中..."
+    },
+    "errors": {
+      "code_required": "请填写股票代码。",
+      "dates_required": "请选择开始日期与结束日期。",
+      "dates_invalid": "结束日期必须晚于开始日期。",
+      "periods_invalid": "快线周期必须小于慢线周期。",
+      "request_failed": "回测请求失败，请确认所选区间该标的有足够日线数据。"
+    },
+    "results": {
+      "title": "回测结果",
+      "total_return": "累计收益",
+      "annualized_return": "年化收益",
+      "win_rate": "胜率",
+      "max_drawdown": "最大回撤",
+      "trade_count": "交易次数",
+      "final_equity": "期末净值",
+      "initial_capital": "初始资金",
+      "na": "暂无",
+      "equity_title": "净值曲线",
+      "equity_description": "按日逐日盯市的账户净值演变。",
+      "trades_title": "买卖交易明细",
+      "trades_description": "策略触发的每一次完整进出场配对。",
+      "no_trades": "所选窗口内策略未触发任何交易。",
+      "columns": {
+        "entry_date": "买入日期",
+        "entry_price": "买入价",
+        "exit_date": "卖出日期",
+        "exit_price": "卖出价",
+        "return": "收益率",
+        "holding_days": "持仓天数"
+      }
+    },
+    "empty": "在上方配置参数并运行回测，结果将展示在此。"
   },
   "settings": {
     "title": "系统配置",
-    "subtitle": "API 密钥、数据源与调度配置（即将推出）",
-    "coming_soon": "系统配置功能即将推出，敬请期待。"
+    "subtitle": "运行环境与依赖服务连通性只读视图。",
+    "coming_soon": "系统配置功能即将推出，敬请期待。",
+    "loading": "正在加载系统信息...",
+    "error": "系统信息加载失败，请确认后端服务可达。",
+    "runtime": {
+      "title": "运行时",
+      "description": "由 FastAPI 后端上报的服务端运行环境元数据。",
+      "app_env": "运行环境",
+      "app_version": "应用版本",
+      "python_version": "Python 版本",
+      "server_time": "服务器时间"
+    },
+    "dependencies": {
+      "title": "依赖服务",
+      "description": "依赖服务实时健康探测。Tushare 仅以配置状态判定可达，以避免消耗接口配额。"
+    },
+    "service": {
+      "database": "TimescaleDB",
+      "redis": "Redis",
+      "tushare": "Tushare Pro",
+      "feishu_bot": "飞书 Bot",
+      "configured": "已配置",
+      "not_configured": "未配置",
+      "connected": "已连接",
+      "disconnected": "未连接",
+      "version": "版本",
+      "error": "错误"
+    },
+    "edit_hint": {
+      "title": "凭据修改方式",
+      "description": "敏感凭据（API Token、应用密钥）通过后端 `.env` 文件维护。请在服务端更新后重启 FastAPI 进程以生效。"
+    }
   },
   "system": {
     "title": "系统状态",

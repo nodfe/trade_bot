@@ -31,3 +31,33 @@ class BotCommandLogOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ServiceHealth(BaseModel):
+    """Per-service connectivity & version snapshot.
+
+    `connected` is the canonical "can we reach it right now?" flag.
+    `version` is best-effort — None if probing failed or the backend doesn't
+    expose one. `error` carries the short diagnostic when connected=False.
+    `configured` is true when env credentials are populated, regardless of
+    whether the service actually answered the probe.
+    """
+
+    name: str
+    configured: bool
+    connected: bool
+    version: str | None = None
+    error: str | None = None
+
+
+class SystemInfoOut(BaseModel):
+    """Aggregated system status for the admin Settings page."""
+
+    app_env: str
+    app_version: str
+    python_version: str
+    server_time: datetime
+    database: ServiceHealth
+    redis: ServiceHealth
+    tushare: ServiceHealth
+    feishu_bot: ServiceHealth
