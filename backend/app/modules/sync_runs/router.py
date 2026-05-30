@@ -2,7 +2,8 @@ from fastapi import APIRouter, Query
 
 from app.modules.bot.command_logs import BotCommandLogRepository
 from app.modules.sync_runs.repository import SyncRunRepository
-from app.modules.sync_runs.schemas import BotCommandLogOut, SyncRunOut
+from app.modules.sync_runs.schemas import BotCommandLogOut, SyncRunOut, SystemInfoOut
+from app.modules.sync_runs.system_info import get_system_info
 
 router = APIRouter(prefix="/system", tags=["system"])
 
@@ -25,3 +26,9 @@ async def list_bot_command_logs(
 ) -> list[BotCommandLogOut]:
     logs = await bot_log_repo.list_recent(limit=limit)
     return [BotCommandLogOut.model_validate(log) for log in logs]
+
+
+@router.get("/info", response_model=SystemInfoOut)
+async def get_system_info_endpoint() -> SystemInfoOut:
+    """Aggregated system status for the admin Settings page."""
+    return await get_system_info()

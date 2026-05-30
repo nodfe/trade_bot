@@ -41,6 +41,27 @@ export interface BotCommandLog {
   created_at: string;
 }
 
+/** Per-service connectivity & version snapshot. Mirrors `ServiceHealth`. */
+export interface ServiceHealth {
+  name: string;
+  configured: boolean;
+  connected: boolean;
+  version: string | null;
+  error: string | null;
+}
+
+/** Aggregated system status for the admin Settings page. */
+export interface SystemInfo {
+  app_env: string;
+  app_version: string;
+  python_version: string;
+  server_time: string;
+  database: ServiceHealth;
+  redis: ServiceHealth;
+  tushare: ServiceHealth;
+  feishu_bot: ServiceHealth;
+}
+
 // ---------------------------------------------------------------------------
 // Query keys
 // ---------------------------------------------------------------------------
@@ -51,6 +72,7 @@ export const systemKeys = {
     [...systemKeys.all, "sync-runs", limit, jobName ?? null] as const,
   botCommandLogs: (limit: number) =>
     [...systemKeys.all, "bot-command-logs", limit] as const,
+  info: () => [...systemKeys.all, "info"] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -99,6 +121,24 @@ export function useBotCommandLogs(
       api.get<BotCommandLog[]>("/system/bot-command-logs", {
         params: { limit },
       }),
+    refetchInterval: 60 * 1000,
+    ...options,
+  });
+}
+
+/**
+ * Fetch aggregated system status (env, versions, dependency health).
+ * Auto-refreshes every 60s so the Settings page stays current.
+ */
+export function useSystemInfo(
+  options?: Omit<
+    UseQueryOptions<SystemInfo, Error, SystemInfo, ReturnType<typeof systemKeys.info>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: systemKeys.info(),
+    queryFn: () => api.get<SystemInfo>("/system/info"),
     refetchInterval: 60 * 1000,
     ...options,
   });

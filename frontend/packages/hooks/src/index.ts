@@ -35,6 +35,7 @@ export type {
 export {
   useSyncRuns,
   useBotCommandLogs,
+  useSystemInfo,
   useTriggerSync,
   useSyncDailyBars,
   systemKeys,
@@ -42,6 +43,15 @@ export {
 export type {
   SyncRun,
   BotCommandLog,
+  ServiceHealth,
+  SystemInfo,
   SyncResult,
   SyncJobKind,
 } from "./use-system-data";
+export { useRunBacktest } from "./use-backtests";
+export type {
+  BacktestRequest,
+  BacktestResult,
+  BacktestTrade,
+  EquityPoint,
+} from "./use-backtests";
