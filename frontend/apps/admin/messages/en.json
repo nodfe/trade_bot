@@ -302,6 +302,7 @@
       "end_date": "End Date",
       "strategy": "Strategy",
       "strategy_ma_cross": "Dual MA Crossover",
+      "strategy_locked_hint": "Only the dual-MA crossover is available right now — more strategies are on the roadmap.",
       "fast_period": "Fast MA Period",
       "slow_period": "Slow MA Period",
       "initial_capital": "Initial Capital (CNY)",

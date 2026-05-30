@@ -246,10 +246,15 @@ export function BacktestsClient() {
                 <select
                   value="ma_cross"
                   disabled
-                  className="w-full rounded-md border bg-background/40 px-3 py-2 text-sm"
+                  aria-disabled="true"
+                  title={t("form.strategy_locked_hint")}
+                  className="w-full rounded-md border bg-background/40 px-3 py-2 text-sm cursor-not-allowed opacity-70"
                 >
                   <option value="ma_cross">{t("form.strategy_ma_cross")}</option>
                 </select>
+                <div className="pt-1 text-[10px] text-muted-foreground/80">
+                  {t("form.strategy_locked_hint")}
+                </div>
               </FieldLabel>
               <FieldLabel label={t("form.fast_period")}>
                 <input

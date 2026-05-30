@@ -302,6 +302,7 @@
       "end_date": "结束日期",
       "strategy": "策略",
       "strategy_ma_cross": "双均线交叉",
+      "strategy_locked_hint": "目前仅支持双均线交叉策略，更多策略开发中",
       "fast_period": "快线周期",
       "slow_period": "慢线周期",
       "initial_capital": "初始资金 (CNY)",
