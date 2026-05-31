@@ -8,6 +8,8 @@ import {
   type CandlestickData,
   type LineData,
   type HistogramData,
+  type SeriesMarker,
+  type Time,
 } from "lightweight-charts";
 import { useLWCTheme } from "./use-lwc-theme";
 
@@ -20,11 +22,22 @@ export interface KLineBar {
   volume: number;
 }
 
+/**
+ * Buy / sell marker overlay for the candlestick series. ``date`` is YYYY-MM-DD;
+ * the marker is anchored to that bar regardless of the bar's intraday open.
+ */
+export interface KLineMarker {
+  date: string;
+  side: "buy" | "sell";
+  text?: string;
+}
+
 interface KLineChartProps {
   data: KLineBar[];
   height?: number;
   className?: string;
   maPeriods?: number[];
+  markers?: KLineMarker[];
 }
 
 export function KLineChart({
@@ -32,6 +45,7 @@ export function KLineChart({
   height = 360,
   className = "",
   maPeriods = [5, 20],
+  markers,
 }: KLineChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -109,6 +123,18 @@ export function KLineChart({
 
     candlestickSeries.setData(candleData);
 
+    // 2b. Optional B/S markers (entry / exit annotations).
+    if (markers && markers.length > 0) {
+      const seriesMarkers: SeriesMarker<Time>[] = markers.map((m) => ({
+        time: m.date as Time,
+        position: m.side === "buy" ? "belowBar" : "aboveBar",
+        color: m.side === "buy" ? themeColors.stockUp : themeColors.stockDown,
+        shape: m.side === "buy" ? "arrowUp" : "arrowDown",
+        text: m.text ?? (m.side === "buy" ? "B" : "S"),
+      }));
+      candlestickSeries.setMarkers(seriesMarkers);
+    }
+
     // 3. Add MA Series dynamically
     const colors = ["#EAB308", "#3B82F6", "#A855F7"]; // Gold/Yellow, Blue, Purple
     const maSeriesList: ISeriesApi<"Line">[] = [];
@@ -174,7 +200,7 @@ export function KLineChart({
       chart.remove();
       chartRef.current = null;
     };
-  }, [data, height, themeColors]);
+  }, [data, height, themeColors, markers]);
 
   return (
     <div className={`relative w-full rounded-xl p-2 ${className}`}>

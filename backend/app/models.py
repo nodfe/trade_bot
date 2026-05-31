@@ -7,5 +7,9 @@ from app.modules.market_data.models import (  # noqa: F401
     LimitUpBoard,
     Stock,
 )
+from app.modules.strategies.models import StrategyKpiSnapshot  # noqa: F401
+from app.modules.strategies.subscriptions.models import (  # noqa: F401
+    StrategySubscription,
+)
 from app.modules.sync_runs.models import SyncRun  # noqa: F401
 from app.modules.watchlist.models import Watchlist, WatchlistItem  # noqa: F401

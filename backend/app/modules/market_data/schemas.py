@@ -69,6 +69,18 @@ class StockAnalysisSummaryOut(BaseModel):
     trend_bias: str
     summary: str
     signals: list[dict[str, str]]
+    # Optional limit-up extension fields. Populated by both the live
+    # ``screen_stocks`` path and the precomputed walk-forward backtest path.
+    pct_change_1d: float | None = None
+    is_limit_up_today: bool | None = None
+    consec_limit_up_days: int | None = None
+    open_gap_pct: float | None = None
+    high_60d_ratio: float | None = None
+    days_since_last_limit_up: int | None = None
+    # Streak ending at the most recent limit-up bar PRIOR to today. Used by
+    # the zt_relay screener to gate against late-stage relays. ``None`` when
+    # there is no prior limit-up in the visible window.
+    prior_consec_limit_up_days: int | None = None
 
 
 class StockScreenItemOut(BaseModel):
@@ -86,6 +98,9 @@ class StockScreenItemOut(BaseModel):
     is_limit_up_candidate: bool = False
     hot_tags: list[str] = []
     related_news_headlines: list[str] = []
+    # Optional limit-up extension fields surfaced for UI ranking.
+    consec_limit_up_days: int | None = None
+    high_60d_ratio: float | None = None
 
 
 class StockScreenResultOut(BaseModel):
@@ -100,6 +115,29 @@ class StockScreenParams(BaseModel):
     min_return_5d_pct: float | None = None
     min_volume_ratio: float | None = None
     max_return_5d_pct: float | None = None
+    # When True, the volume_breakout screener also requires a positive MACD
+    # histogram. Defaults to False so the screener does not silently filter
+    # out otherwise-valid breakout candidates.
+    require_macd_positive: bool = False
+    # Maximum number of candidate stocks to evaluate per scan. Defaults to
+    # 1500 (effectively the entire local universe). Lower values make the
+    # endpoint snappier when memory or latency constrained.
+    max_candidates: int = 1500
+    # New strategy params
+    min_streak: int | None = None  # leader_streak: required consecutive limit-up days
+    max_streak: int | None = None  # zt_relay: cap on prior streak (avoid late chasers)
+    max_open_gap_pct: float | None = None  # zt_relay: today's open gap relative to yesterday's close
+    max_high_60d_ratio: float | None = None  # first_limit_up_low: latest_close / 60d_high upper bound
+    min_quiet_days: int | None = None  # first_limit_up_low: how many trailing days without a limit-up
+    # lhb_follow params
+    min_net_buy_yi: float | None = None  # 龙虎榜净买入额最低（亿元）
+    lhb_lookback_days: int | None = None  # 跟买窗口：最近 N 个交易日上榜即可触发，默认 1
+    # Market segment filter. ``None`` or empty list = all 5 boards allowed.
+    # Tokens come from MarketSegment in market_data.markets.
+    markets: list[str] | None = None
+    # When False (default), ST/*ST stocks are filtered out at the candidate
+    # stage. Set True to opt them in.
+    include_st: bool = False
 
 
 class MarketOverviewOut(BaseModel):

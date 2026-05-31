@@ -124,6 +124,8 @@ export interface StockScreenParams {
   min_return_5d_pct?: number;
   min_volume_ratio?: number;
   max_return_5d_pct?: number;
+  markets?: string[];
+  include_st?: boolean;
 }
 
 export interface MarketOverview {

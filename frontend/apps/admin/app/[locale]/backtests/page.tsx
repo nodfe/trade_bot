@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { setRequestLocale } from "next-intl/server"
 import { BacktestsClient } from "./backtests-client"
 
@@ -9,5 +10,9 @@ export default async function BacktestsPage({ params }: BacktestsPageProps) {
   const { locale } = await params
   setRequestLocale(locale)
 
-  return <BacktestsClient />
+  return (
+    <Suspense fallback={null}>
+      <BacktestsClient />
+    </Suspense>
+  )
 }

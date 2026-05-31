@@ -27,6 +27,22 @@ const screenOptions = [
     value: "pullback_watch",
     glowClass: "stock-down-glow",
   },
+  {
+    value: "first_limit_up_low",
+    glowClass: "stock-up-glow",
+  },
+  {
+    value: "leader_streak",
+    glowClass: "stock-up-glow",
+  },
+  {
+    value: "zt_relay",
+    glowClass: "stock-up-glow",
+  },
+  {
+    value: "lhb_follow",
+    glowClass: "stock-up-glow",
+  },
 ] as const
 
 function formatPercent(value: number | null | undefined) {

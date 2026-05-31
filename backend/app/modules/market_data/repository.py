@@ -185,6 +185,21 @@ class MarketDataRepository:
             )
             return list(result.scalars().all())
 
+    async def get_dragon_tiger_in_range(
+        self, start: date, end: date
+    ) -> list[DragonTigerList]:
+        """Range-fetch LHB rows for backtest prefetch. Returns rows where
+        ``start <= trade_date <= end`` ordered by (date asc, net_buy desc).
+        """
+        async with async_session_factory() as session:
+            result = await session.execute(
+                select(DragonTigerList)
+                .where(DragonTigerList.trade_date >= start)
+                .where(DragonTigerList.trade_date <= end)
+                .order_by(DragonTigerList.trade_date.asc(), DragonTigerList.net_buy.desc())
+            )
+            return list(result.scalars().all())
+
     async def save_dragon_tiger_list(self, items: list[DragonTigerList]) -> int:
         async with async_session_factory() as session:
             for item in items:

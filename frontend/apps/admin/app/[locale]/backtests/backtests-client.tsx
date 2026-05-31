@@ -18,6 +18,7 @@ import {
   useRunBacktest,
   useRunScreenerBacktest,
   useScreenerPreview,
+  useStockKline,
   type BacktestResult,
   type BacktestTrade,
   type BenchmarkMode,
@@ -30,6 +31,7 @@ import {
   type ScreenerType,
   type WeightingMode,
 } from "@quant/hooks"
+import { KLineChart, type KLineMarker } from "@quant/charts"
 import {
   Activity,
   AlertCircle,
@@ -40,9 +42,11 @@ import {
   Coins,
   FlaskConical,
   Layers,
+  LineChart as LineChartIcon,
   Loader2,
   TrendingDown,
   TrendingUp,
+  X,
 } from "lucide-react"
 import {
   Area,
@@ -681,6 +685,10 @@ const SCREENER_TYPES: ScreenerType[] = [
   "strong_uptrend",
   "volume_breakout",
   "pullback_watch",
+  "first_limit_up_low",
+  "leader_streak",
+  "zt_relay",
+  "lhb_follow",
 ]
 const REBALANCE_OPTIONS: RebalanceCadence[] = [
   "daily",
@@ -710,6 +718,8 @@ function ScreenerBacktestPanel() {
   const [stampDutyRate, setStampDutyRate] = useState(0.001)
   const [slippageRate, setSlippageRate] = useState(0.001)
   const [benchmark, setBenchmark] = useState<BenchmarkMode>("universe_buy_hold")
+  const [markets, setMarkets] = useState<string[]>([])
+  const [includeSt, setIncludeSt] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
 
   const { mutate, data, error, isPending, reset } = useRunScreenerBacktest()
@@ -742,6 +752,14 @@ function ScreenerBacktestPanel() {
       stop_loss_pct: stopLoss ? Number(stopLoss) : null,
       take_profit_pct: takeProfit ? Number(takeProfit) : null,
       benchmark,
+      ...((markets.length > 0 || includeSt)
+        ? {
+            screen_params_override: {
+              ...(markets.length > 0 ? { markets } : {}),
+              ...(includeSt ? { include_st: true } : {}),
+            },
+          }
+        : {}),
     }
     mutate(payload)
   }
@@ -859,6 +877,60 @@ function ScreenerBacktestPanel() {
                   ))}
                 </select>
               </FieldLabel>
+            </div>
+
+            {/* Market segment filter */}
+            <div className="rounded-xl border bg-background/20 p-3 space-y-3">
+              <div className="text-[11px] uppercase tracking-[0.16em] font-bold text-muted-foreground/80">
+                {t("screener.form.markets_section_title")}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { key: "main_sh", value: "main_sh" },
+                    { key: "main_sz", value: "main_sz" },
+                    { key: "chinext", value: "chinext" },
+                    { key: "star", value: "star" },
+                    { key: "bse", value: "bse" },
+                  ] as const
+                ).map((opt) => {
+                  const checked = markets.includes(opt.value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() =>
+                        setMarkets((prev) =>
+                          prev.includes(opt.value)
+                            ? prev.filter((m) => m !== opt.value)
+                            : [...prev, opt.value],
+                        )
+                      }
+                      className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                        checked
+                          ? "border-primary bg-primary/15 text-primary"
+                          : "border-border bg-background/40 text-muted-foreground hover:bg-background/60"
+                      }`}
+                    >
+                      {t(`screener.form.markets.${opt.key}`)}
+                    </button>
+                  )
+                })}
+                <button
+                  type="button"
+                  onClick={() => setIncludeSt((v) => !v)}
+                  className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                    includeSt
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border bg-background/40 text-muted-foreground hover:bg-background/60"
+                  }`}
+                >
+                  {t("screener.form.markets.st")}
+                </button>
+              </div>
+              <div className="text-[11px] text-muted-foreground/80">
+                {t("screener.form.markets_hint")}
+              </div>
             </div>
 
             {/* Risk controls (optional) */}
@@ -1453,23 +1525,35 @@ function ExitReasonBadge({ reason }: { reason: RebalanceTradeReason }) {
 function ScreenerTradesTable({ trades }: { trades: ScreenerBacktestTrade[] }) {
   const t = useTranslations("backtests.results.columns")
   const tCols = useTranslations("backtests.screener.results.trades_columns")
+  const tHint = useTranslations("backtests.screener.results")
+  const [openTrade, setOpenTrade] = useState<ScreenerBacktestTrade | null>(null)
   return (
-    <div className="overflow-x-auto rounded-lg border bg-background/20">
-      <table className="w-full text-xs">
-        <thead className="bg-muted/30">
-          <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-muted-foreground/80">
-            <th className="px-3 py-2 font-semibold">{t("entry_date")}</th>
-            <th className="px-3 py-2 font-semibold">code</th>
-            <th className="px-3 py-2 font-semibold">{tCols("name")}</th>
-            <th className="px-3 py-2 font-semibold text-right">{t("entry_price")}</th>
-            <th className="px-3 py-2 font-semibold">{t("exit_date")}</th>
-            <th className="px-3 py-2 font-semibold text-right">{t("exit_price")}</th>
-            <th className="px-3 py-2 font-semibold text-right">{t("return")}</th>
-            <th className="px-3 py-2 font-semibold text-right">{t("holding_days")}</th>
-            <th className="px-3 py-2 font-semibold">{tCols("exit_reason")}</th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="space-y-2">
+      <div className="rounded-md border border-dashed bg-background/20 px-3 py-2 text-[11px] text-muted-foreground">
+        {tHint("fill_model_hint")}
+      </div>
+      <div className="overflow-x-auto rounded-lg border bg-background/20">
+        <table className="w-full text-xs">
+          <thead className="bg-muted/30">
+            <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-muted-foreground/80">
+              <th className="px-3 py-2 font-semibold">
+                {t("entry_date")}
+                <span className="ml-1 text-muted-foreground/60 normal-case tracking-normal">
+                  (T+1 09:30)
+                </span>
+              </th>
+              <th className="px-3 py-2 font-semibold">code</th>
+              <th className="px-3 py-2 font-semibold">{tCols("name")}</th>
+              <th className="px-3 py-2 font-semibold text-right">{t("entry_price")}</th>
+              <th className="px-3 py-2 font-semibold">{t("exit_date")}</th>
+              <th className="px-3 py-2 font-semibold text-right">{t("exit_price")}</th>
+              <th className="px-3 py-2 font-semibold text-right">{t("return")}</th>
+              <th className="px-3 py-2 font-semibold text-right">{t("holding_days")}</th>
+              <th className="px-3 py-2 font-semibold">{tCols("exit_reason")}</th>
+              <th className="px-3 py-2 font-semibold text-center">{tCols("chart")}</th>
+            </tr>
+          </thead>
+          <tbody>
           {trades.map((trade, idx) => (
             <tr
               key={`${trade.code}-${trade.entry_date}-${trade.exit_date}-${idx}`}
@@ -1491,10 +1575,170 @@ function ScreenerTradesTable({ trades }: { trades: ScreenerBacktestTrade[] }) {
               <td className="px-3 py-2 font-sans">
                 <ExitReasonBadge reason={trade.exit_reason} />
               </td>
+              <td className="px-3 py-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setOpenTrade(trade)}
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-md border bg-background/50 text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                  title={tCols("chart")}
+                >
+                  <LineChartIcon className="h-3.5 w-3.5" />
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
+      {openTrade ? (
+        <TradeChartDialog
+          trade={openTrade}
+          onClose={() => setOpenTrade(null)}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * Modal showing a daily K-line chart for a backtest trade with B (entry) and
+ * S (exit) markers. Window covers [entry_date - 20 trading days, exit_date +
+ * 5 trading days] approximated via calendar days (~ × 1.5) so weekends/
+ * holidays don't truncate the visible context.
+ */
+function TradeChartDialog({
+  trade,
+  onClose,
+}: {
+  trade: ScreenerBacktestTrade
+  onClose: () => void
+}) {
+  const t = useTranslations("backtests.screener.results.chart_dialog")
+
+  const { startIso, endIso } = useMemo(() => {
+    const entry = new Date(`${trade.entry_date}T00:00:00`)
+    const exit_ = new Date(`${trade.exit_date}T00:00:00`)
+    const start = new Date(entry)
+    start.setDate(start.getDate() - 30) // ~20 trading days back
+    const end = new Date(exit_)
+    end.setDate(end.getDate() + 7) // ~5 trading days forward
+    const fmt = (d: Date) => d.toISOString().slice(0, 10)
+    return { startIso: fmt(start), endIso: fmt(end) }
+  }, [trade.entry_date, trade.exit_date])
+
+  const klineQuery = useStockKline({
+    symbol: trade.code,
+    period: "daily",
+    start: startIso,
+    end: endIso,
+  })
+
+  const bars = useMemo(
+    () =>
+      (klineQuery.data ?? []).map((b) => ({
+        timestamp: b.timestamp,
+        open: b.open,
+        high: b.high,
+        low: b.low,
+        close: b.close,
+        volume: b.volume,
+      })),
+    [klineQuery.data],
+  )
+
+  const markers: KLineMarker[] = useMemo(
+    () => [
+      {
+        date: trade.entry_date,
+        side: "buy",
+        text: `B @${trade.entry_price.toFixed(2)}`,
+      },
+      {
+        date: trade.exit_date,
+        side: "sell",
+        text: `S @${trade.exit_price.toFixed(2)}`,
+      },
+    ],
+    [trade.entry_date, trade.exit_date, trade.entry_price, trade.exit_price],
+  )
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute inset-0 bg-background/60 backdrop-blur-sm"
+      />
+      <div className="relative w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden rounded-xl border bg-background shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b p-4">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.16em] font-bold text-muted-foreground/80">
+              {t("title")}
+            </div>
+            <h3 className="text-base font-bold font-display">
+              {trade.name}{" "}
+              <span className="font-mono text-muted-foreground">
+                {trade.code}
+              </span>
+            </h3>
+            <p className="text-[11px] text-muted-foreground mt-1 font-mono">
+              {trade.entry_date} → {trade.exit_date} ·{" "}
+              <span className={returnColorClass(trade.return_pct)}>
+                {trade.return_pct > 0 ? "+" : ""}
+                {trade.return_pct.toFixed(2)}%
+              </span>{" "}
+              · {trade.holding_days}d
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-md p-1 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="p-4">
+          {klineQuery.isLoading ? (
+            <div className="flex h-[360px] items-center justify-center text-xs text-muted-foreground">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {t("loading")}
+            </div>
+          ) : klineQuery.error ? (
+            <div className="flex h-[360px] items-center justify-center text-xs text-destructive">
+              {t("error")}
+            </div>
+          ) : bars.length === 0 ? (
+            <div className="flex h-[360px] items-center justify-center text-xs text-muted-foreground">
+              {t("empty")}
+            </div>
+          ) : (
+            <>
+              <KLineChart data={bars} markers={markers} height={400} />
+              <div className="mt-3 rounded-md border border-dashed bg-muted/10 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+                <div>
+                  <span className="font-semibold text-foreground/80">B：</span>
+                  {t("fill_buy_note")}
+                </div>
+                <div className="mt-1">
+                  <span className="font-semibold text-foreground/80">S：</span>
+                  {trade.exit_reason === "stop_loss"
+                    ? t("fill_sell_stop_loss_note")
+                    : trade.exit_reason === "take_profit"
+                      ? t("fill_sell_take_profit_note")
+                      : t("fill_sell_rebalance_note")}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

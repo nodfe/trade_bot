@@ -11,6 +11,7 @@ celery_app = Celery(
         "app.modules.market_data.tasks",
         "app.modules.watchlist.tasks",
         "app.modules.strategies.tasks",
+        "app.modules.strategies.subscriptions.tasks",
     ],
 )
 
@@ -74,5 +75,11 @@ celery_app.conf.beat_schedule = {
     "compute-strategy-kpi-snapshots-daily": {
         "task": "strategies.compute_kpi_snapshots",
         "schedule": crontab(hour=9, minute=0, day_of_week="*"),
+    },
+    # Strategy subscription dispatcher — every 5 minutes; the per-subscription
+    # cron filtering happens inside the task body.
+    "dispatch-strategy-subscriptions": {
+        "task": "strategies.dispatch_subscriptions",
+        "schedule": crontab(minute="*/5"),
     },
 }

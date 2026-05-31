@@ -63,7 +63,13 @@ class EligibleCodeOut(BaseModel):
 
 
 class ScreenerBacktestRequest(BaseModel):
-    screen_type: Literal["strong_uptrend", "volume_breakout", "pullback_watch"]
+    screen_type: str = Field(
+        ...,
+        description=(
+            "Built-in catalog key (strong_uptrend / volume_breakout / "
+            "pullback_watch) or 'custom:<id>'."
+        ),
+    )
     screen_params_override: StockScreenParams | None = None
     start_date: date
     end_date: date
@@ -75,11 +81,22 @@ class ScreenerBacktestRequest(BaseModel):
     commission_rate: float = Field(0.00025, ge=0, le=0.01)
     stamp_duty_rate: float = Field(0.001, ge=0, le=0.01)
     slippage_rate: float = Field(0.001, ge=0, le=0.01)
+    # Aggregate fee shorthand in basis points. When set, this overrides
+    # commission_rate + slippage_rate (split 50/50). Stamp duty is left
+    # alone since it is regulatory.
+    fee_bps: float | None = Field(
+        None,
+        ge=0,
+        le=200,
+        description="Combined commission+slippage in basis points (overrides individual rates)",
+    )
     # Risk control (None = disabled)
     stop_loss_pct: float | None = Field(None, ge=0.5, le=50)
     take_profit_pct: float | None = Field(None, ge=0.5, le=200)
+    # Alias accepted from front-end forms.
+    stop_profit_pct: float | None = Field(None, ge=0.5, le=200)
     # Benchmark
-    benchmark: Literal["none", "universe_buy_hold"] = "universe_buy_hold"
+    benchmark: Literal["none", "universe_buy_hold", "hs300"] = "universe_buy_hold"
 
 
 class HoldingItem(BaseModel):
@@ -132,6 +149,33 @@ class DrawdownPoint(BaseModel):
     drawdown_pct: float
 
 
+class MonthlyReturn(BaseModel):
+    period: str  # "YYYY-MM"
+    return_pct: float
+
+
+class YearlyReturn(BaseModel):
+    period: str  # "YYYY"
+    return_pct: float
+
+
+class SectorWeight(BaseModel):
+    sector: str
+    weight_pct: float
+
+
+class MarketCapBucket(BaseModel):
+    bucket: str  # small / mid / large
+    weight_pct: float
+
+
+class AttributionOut(BaseModel):
+    sector_exposure: list[SectorWeight]
+    market_cap_buckets: list[MarketCapBucket]
+    monthly_returns: list[MonthlyReturn]
+    yearly_returns: list[YearlyReturn]
+
+
 class ScreenerBacktestResult(BaseModel):
     # Configuration echo
     screen_type: str
@@ -148,12 +192,23 @@ class ScreenerBacktestResult(BaseModel):
     trade_count: int
     final_equity: float
     initial_capital: float
+    # Extended KPIs
+    sortino_ratio: float | None = None
+    calmar_ratio: float | None = None
+    turnover_pct: float | None = None
+    sharpe_ratio: float | None = None
+    alpha_pct: float | None = None
     # Time-series
     equity_curve: list[EquityPoint]
     benchmark_curve: list[EquityPoint] | None
+    benchmark_kind: str | None = None
     drawdown_curve: list[DrawdownPoint]
     # Snapshots and logs
     rebalance_dates: list[date]
     holdings_history: list[HoldingSnapshot]
     trades: list[ScreenerBacktestTrade]
     costs: CostBreakdown
+    # Period returns + attribution payload
+    monthly_returns: list[MonthlyReturn] = Field(default_factory=list)
+    yearly_returns: list[YearlyReturn] = Field(default_factory=list)
+    attribution: AttributionOut | None = None

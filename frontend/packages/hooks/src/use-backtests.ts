@@ -66,7 +66,11 @@ export interface EligibleCode {
 export type ScreenerType =
   | "strong_uptrend"
   | "volume_breakout"
-  | "pullback_watch";
+  | "pullback_watch"
+  | "first_limit_up_low"
+  | "leader_streak"
+  | "zt_relay"
+  | "lhb_follow";
 
 export type RebalanceCadence = "daily" | "weekly" | "biweekly" | "monthly";
 export type WeightingMode = "equal" | "score";
@@ -87,6 +91,8 @@ export interface ScreenerBacktestRequest {
     min_return_5d_pct?: number | null;
     min_volume_ratio?: number | null;
     max_return_5d_pct?: number | null;
+    markets?: string[] | null;
+    include_st?: boolean | null;
   } | null;
   start_date: string;
   end_date: string;
@@ -142,6 +148,33 @@ export interface DrawdownPoint {
   drawdown_pct: number;
 }
 
+export interface MonthlyReturn {
+  period: string; // "YYYY-MM"
+  return_pct: number;
+}
+
+export interface YearlyReturn {
+  period: string; // "YYYY"
+  return_pct: number;
+}
+
+export interface SectorWeight {
+  sector: string;
+  weight_pct: number;
+}
+
+export interface MarketCapBucket {
+  bucket: string;
+  weight_pct: number;
+}
+
+export interface AttributionOut {
+  sector_exposure: SectorWeight[];
+  market_cap_buckets: MarketCapBucket[];
+  monthly_returns: MonthlyReturn[];
+  yearly_returns: YearlyReturn[];
+}
+
 export interface ScreenerBacktestResult {
   screen_type: string;
   rebalance: string;
@@ -156,13 +189,22 @@ export interface ScreenerBacktestResult {
   trade_count: number;
   final_equity: number;
   initial_capital: number;
+  sortino_ratio?: number | null;
+  calmar_ratio?: number | null;
+  turnover_pct?: number | null;
+  sharpe_ratio?: number | null;
+  alpha_pct?: number | null;
   equity_curve: EquityPoint[];
   benchmark_curve: EquityPoint[] | null;
+  benchmark_kind?: string | null;
   drawdown_curve: DrawdownPoint[];
   rebalance_dates: string[];
   holdings_history: HoldingSnapshot[];
   trades: ScreenerBacktestTrade[];
   costs: CostBreakdown;
+  monthly_returns?: MonthlyReturn[];
+  yearly_returns?: YearlyReturn[];
+  attribution?: AttributionOut | null;
 }
 
 // ---------------------------------------------------------------------------

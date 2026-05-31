@@ -1,3 +1,5 @@
+from bisect import bisect_right
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 
 import pandas as pd
@@ -6,6 +8,7 @@ from ta.momentum import RSIIndicator
 from ta.trend import MACD
 
 from app.modules.market_data.models import DailyBar, DailyNews, DragonTigerList, LimitUpBoard, Stock
+from app.modules.market_data.markets import passes_market_filter
 from app.modules.market_data.providers.base import Quote
 from app.modules.market_data.providers.facade import DataFacade, create_data_facade
 from app.modules.market_data.repository import MarketDataRepository
@@ -197,7 +200,7 @@ class MarketDataService:
         self, code: str, *, local_only: bool = False, as_of_date: date | None = None
     ) -> StockAnalysisSummaryOut | None:
         bars = await self.get_stock_kline(
-            code, limit=20, local_only=local_only, as_of_date=as_of_date
+            code, limit=60, local_only=local_only, as_of_date=as_of_date
         )
         if len(bars) < 5:
             return None
@@ -218,13 +221,16 @@ class MarketDataService:
             else None
         )
         return_20d_pct = (
-            ((latest_close - closes[0]) / closes[0] * 100)
+            ((latest_close - closes[-20]) / closes[-20] * 100)
             if len(closes) >= 20
             else None
         )
 
         latest_volume = volumes[-1]
-        avg_volume_5d = sum(volumes[-5:]) / 5 if len(volumes) >= 5 else None
+        # Compare today's volume against the average of the PRIOR 5 sessions
+        # (excluding today). Including today in the denominator dampens any
+        # genuine breakout — a 2x volume spike would only register as ~1.67x.
+        avg_volume_5d = sum(volumes[-6:-1]) / 5 if len(volumes) >= 6 else None
         volume_ratio_5d = (latest_volume / avg_volume_5d) if avg_volume_5d else None
 
         trend_bias = self._determine_trend_bias(price_vs_ma5_pct, price_vs_ma20_pct, return_20d_pct)
@@ -265,6 +271,7 @@ class MarketDataService:
             trend_bias=trend_bias,
             summary=summary,
             signals=signals,
+            **self._derive_limit_up_fields(code, bars),  # type: ignore[arg-type]
         )
 
     async def get_market_overview(self) -> MarketOverviewOut:
@@ -350,14 +357,67 @@ class MarketDataService:
                         continue
                     news_by_code.setdefault(item.code, []).append(item.title)
 
-        for stock in candidate_stocks[:200]:
+        # Build recent-LHB lookup for the lhb_follow screener. For both live
+        # and historical modes we look back ``lhb_lookback_days`` trading days
+        # ending the day before the as-of date (or yesterday in live mode).
+        lhb_recent: dict[str, dict] = {}
+        if screen_type == "lhb_follow":
+            lookback = (
+                params.lhb_lookback_days
+                if params.lhb_lookback_days is not None
+                else 1
+            )
+            lookback = max(1, min(lookback, 20))
+            if historical_mode and as_of_date is not None:
+                end_d = as_of_date - timedelta(days=1)
+                start_d = end_d - timedelta(days=lookback * 2 + 7)  # cushion for weekends
+                rows = await self.repo.get_dragon_tiger_in_range(start_d, end_d)
+            else:
+                end_d = await self.repo.get_latest_trade_date_for_dragon_tiger()
+                if end_d is not None:
+                    start_d = end_d - timedelta(days=lookback * 2 + 7)
+                    rows = await self.repo.get_dragon_tiger_in_range(start_d, end_d)
+                else:
+                    rows = []
+            # Take the most recent ``lookback`` distinct trading dates and
+            # aggregate per code (sum net_buy across rows on those dates).
+            distinct_dates = sorted({r.trade_date for r in rows}, reverse=True)[:lookback]
+            keep = set(distinct_dates)
+            agg: dict[str, dict] = {}
+            for r in rows:
+                if r.trade_date not in keep:
+                    continue
+                cur = agg.get(r.code)
+                net_yi = (r.net_buy or 0.0) / 1e8
+                if cur is None:
+                    agg[r.code] = {
+                        "trade_date": r.trade_date,
+                        "net_buy_yi": net_yi,
+                        "reason": r.reason,
+                    }
+                else:
+                    cur["net_buy_yi"] = cur["net_buy_yi"] + net_yi
+                    # keep the most recent date
+                    if r.trade_date > cur["trade_date"]:
+                        cur["trade_date"] = r.trade_date
+                        cur["reason"] = r.reason
+            lhb_recent = agg
+
+        for stock in candidate_stocks[: max(params.max_candidates, 1)]:
+            # Apply market-segment + ST filter (default: all boards, no ST).
+            if not passes_market_filter(
+                stock.code, stock.name, params.markets, params.include_st
+            ):
+                continue
             analysis = await self.get_stock_analysis_summary(
                 stock.code, local_only=True, as_of_date=as_of_date
             )
             if not analysis:
                 continue
 
-            match_reason = self._match_screen(screen_type, analysis, params)
+            match_reason = self._match_screen(
+                screen_type, analysis, params, lhb_recent=lhb_recent
+            )
             if not match_reason:
                 continue
 
@@ -387,6 +447,8 @@ class MarketDataService:
                     is_limit_up_candidate=limit_up_item is not None,
                     hot_tags=hot_tags,
                     related_news_headlines=news_by_code.get(stock.code, [])[:2],
+                    consec_limit_up_days=analysis.consec_limit_up_days,
+                    high_60d_ratio=analysis.high_60d_ratio,
                 )
             )
 
@@ -398,6 +460,251 @@ class MarketDataService:
         )
 
     @staticmethod
+    def _limit_up_threshold_pct(code: str) -> float:
+        """A-share daily price-limit threshold for the given board prefix."""
+        if not code:
+            return 9.8
+        head = code[:3]
+        # 主板 10%, 创业板/科创板/北交所 20%. 北交所 codes are now `8x` and
+        # newer `9x` (920xxx, 924xxx, etc.); historical `4x` codes share the
+        # 20% rule. ST/*ST stocks have ±5% caps but are detected by name not
+        # by code prefix — handled via the live name-based ST filter, not here.
+        if head.startswith("300") or head.startswith("688") or code.startswith(("8", "4", "9")):
+            return 19.8
+        return 9.8
+
+    def _derive_limit_up_fields(
+        self, code: str, bars: list[DailyBar]
+    ) -> dict[str, object]:
+        """Derive the limit-up extension fields from a chronologically sorted
+        bar list ending at the as-of bar. The returned dict mirrors the
+        ``StockAnalysisSummaryOut`` extension fields.
+        """
+        threshold = self._limit_up_threshold_pct(code)
+        n = len(bars)
+        if n == 0:
+            return {
+                "pct_change_1d": None,
+                "is_limit_up_today": None,
+                "consec_limit_up_days": None,
+                "open_gap_pct": None,
+                "high_60d_ratio": None,
+                "days_since_last_limit_up": None,
+                "prior_consec_limit_up_days": None,
+            }
+        # Walk forward computing per-bar limit-up flags.
+        is_zt: list[bool] = []
+        for i, bar in enumerate(bars):
+            if i == 0:
+                is_zt.append(False)
+                continue
+            prev_close = bars[i - 1].close
+            if prev_close <= 0:
+                is_zt.append(False)
+                continue
+            chg = (bar.close - prev_close) / prev_close * 100
+            is_zt.append(chg >= threshold)
+        # Trailing streak.
+        streak = 0
+        for flag in reversed(is_zt):
+            if flag:
+                streak += 1
+            else:
+                break
+        # Days since the most recent PRIOR limit-up (today's own zt does
+        # not count — strategies like first_limit_up_low need to know how
+        # long the stock was quiet before today's break-out).
+        last_zt_idx: int | None = None
+        for i in range(n - 2, -1, -1):
+            if is_zt[i]:
+                last_zt_idx = i
+                break
+        if last_zt_idx is None:
+            days_since: int | None = None
+            prior_streak: int | None = None
+        else:
+            days_since = (n - 1) - last_zt_idx
+            # Reconstruct the streak that ENDED at last_zt_idx by walking
+            # backward from there. ``zt_relay`` uses this to enforce
+            # ``max_streak`` on the relayed name.
+            ps = 0
+            for j in range(last_zt_idx, -1, -1):
+                if is_zt[j]:
+                    ps += 1
+                else:
+                    break
+            prior_streak = ps
+        # Open gap.
+        if n >= 2 and bars[-2].close > 0:
+            open_gap_pct = (bars[-1].open - bars[-2].close) / bars[-2].close * 100
+        else:
+            open_gap_pct = None
+        # 60-day high ratio (uses what we have). Uses intraday HIGH for the
+        # rolling max — that's what 中国 A 股 traders refer to as "60 日高位",
+        # not the closing high. Denominator stays at today's close.
+        window = bars[-60:] if n >= 60 else bars
+        max_high = max(b.high for b in window)
+        high_60d_ratio = bars[-1].close / max_high if max_high > 0 else None
+        # Today's pct change.
+        if n >= 2 and bars[-2].close > 0:
+            pct_change_1d: float | None = (
+                (bars[-1].close - bars[-2].close) / bars[-2].close * 100
+            )
+        else:
+            pct_change_1d = None
+        return {
+            "pct_change_1d": pct_change_1d,
+            "is_limit_up_today": is_zt[-1],
+            "consec_limit_up_days": streak,
+            "open_gap_pct": open_gap_pct,
+            "high_60d_ratio": high_60d_ratio,
+            "days_since_last_limit_up": days_since,
+            "prior_consec_limit_up_days": prior_streak,
+        }
+
+    def _analysis_from_bars(
+        self, code: str, bars: list[DailyBar], as_of_date: date
+    ) -> StockAnalysisSummaryOut | None:
+        """In-memory equivalent of ``get_stock_analysis_summary`` for the
+        walk-forward backtest engine. Operates on a pre-fetched bar list and
+        an as-of date, slicing locally to the trailing 60 sessions.
+        """
+        sliced = [b for b in bars if b.trade_date <= as_of_date]
+        if len(sliced) < 5:
+            return None
+        sliced = sorted(sliced, key=lambda b: b.trade_date)[-60:]
+        closes = [bar.close for bar in sliced]
+        volumes = [float(bar.volume) for bar in sliced]
+        latest_close = closes[-1]
+        ma5 = sum(closes[-5:]) / 5 if len(closes) >= 5 else None
+        ma20 = sum(closes[-20:]) / 20 if len(closes) >= 20 else None
+        rsi14, macd_value, macd_signal, macd_histogram = self._calculate_ta_metrics(closes)
+        price_vs_ma5_pct = ((latest_close - ma5) / ma5 * 100) if ma5 else None
+        price_vs_ma20_pct = ((latest_close - ma20) / ma20 * 100) if ma20 else None
+        return_5d_pct = (
+            ((latest_close - closes[-5]) / closes[-5] * 100) if len(closes) >= 5 else None
+        )
+        return_20d_pct = (
+            ((latest_close - closes[-20]) / closes[-20] * 100) if len(closes) >= 20 else None
+        )
+        latest_volume = volumes[-1]
+        avg_volume_5d = sum(volumes[-6:-1]) / 5 if len(volumes) >= 6 else None
+        volume_ratio_5d = (latest_volume / avg_volume_5d) if avg_volume_5d else None
+        trend_bias = self._determine_trend_bias(price_vs_ma5_pct, price_vs_ma20_pct, return_20d_pct)
+        zt_fields = self._derive_limit_up_fields(code, sliced)
+        return StockAnalysisSummaryOut(
+            symbol=code,
+            latest_close=latest_close,
+            ma5=ma5,
+            ma20=ma20,
+            rsi14=rsi14,
+            macd=macd_value,
+            macd_signal=macd_signal,
+            macd_histogram=macd_histogram,
+            price_vs_ma5_pct=price_vs_ma5_pct,
+            price_vs_ma20_pct=price_vs_ma20_pct,
+            return_5d_pct=return_5d_pct,
+            return_20d_pct=return_20d_pct,
+            volume_ratio_5d=volume_ratio_5d,
+            trend_bias=trend_bias,
+            summary="",
+            signals=[],
+            **zt_fields,  # type: ignore[arg-type]
+        )
+
+    def screen_with_prefetched_bars(
+        self,
+        screen_type: str,
+        params: StockScreenParams,
+        *,
+        as_of_date: date,
+        bars_by_code: dict[str, list[DailyBar]],
+        name_by_code: dict[str, str],
+        precomputed: dict[str, "PrecomputedScreenSeries"] | None = None,
+        lhb_recent: dict[str, dict] | None = None,
+    ) -> StockScreenResultOut:
+        """Run the screener against an in-memory bar map. No DB queries.
+
+        Used by the walk-forward backtest engine which already prefetches a
+        full ``bars_by_code`` for every candidate over the simulation window;
+        re-querying the DB per (rebalance_date, code) was the engine's main
+        latency contributor.
+
+        When ``precomputed`` is provided, indicator lookup is O(log N) per
+        (code, as_of_date) instead of recomputing pandas-based RSI/MACD on
+        each call. For daily-rebalance backtests over wide universes this
+        cuts hundreds of thousands of TA invocations down to one per code.
+        """
+        screen_type = screen_type.lower().strip()
+        candidate_codes = list(bars_by_code.keys())[: max(params.max_candidates, 1)]
+        matches: list[StockScreenItemOut] = []
+        for code in candidate_codes:
+            name = name_by_code.get(code, code)
+            # Apply market-segment + ST filter.
+            if not passes_market_filter(
+                code, name, params.markets, params.include_st
+            ):
+                continue
+            if precomputed is not None and code in precomputed:
+                analysis = precomputed[code].analysis_at(code, as_of_date)
+            else:
+                analysis = self._analysis_from_bars(code, bars_by_code[code], as_of_date)
+            if not analysis:
+                continue
+            match_reason = self._match_screen(
+                screen_type, analysis, params, lhb_recent=lhb_recent
+            )
+            if not match_reason:
+                continue
+            matches.append(
+                StockScreenItemOut(
+                    symbol=code,
+                    name=name_by_code.get(code, code),
+                    market="",
+                    industry=None,
+                    latest_close=analysis.latest_close,
+                    return_5d_pct=analysis.return_5d_pct,
+                    return_20d_pct=analysis.return_20d_pct,
+                    volume_ratio_5d=analysis.volume_ratio_5d,
+                    trend_bias=analysis.trend_bias,
+                    match_reason=match_reason,
+                    is_on_dragon_tiger=False,
+                    is_limit_up_candidate=False,
+                    hot_tags=[],
+                    related_news_headlines=[],
+                    consec_limit_up_days=analysis.consec_limit_up_days,
+                    high_60d_ratio=analysis.high_60d_ratio,
+                )
+            )
+        sorted_matches = self._sort_screen_matches(screen_type, matches)
+        return StockScreenResultOut(
+            screen_type=screen_type,
+            total=len(sorted_matches),
+            items=sorted_matches[: params.limit],
+        )
+
+    def precompute_screen_series(
+        self, bars_by_code: dict[str, list[DailyBar]]
+    ) -> dict[str, "PrecomputedScreenSeries"]:
+        """Precompute per-code indicator vectors over the full bar history.
+
+        For each code we sort bars chronologically and compute MA5/MA20/RSI14/
+        MACD-histogram/5d-and-20d returns/5d volume ratio as full-length
+        pandas Series (or None when too short). The returned struct supports
+        fast point-in-time lookup via ``analysis_at(as_of_date)``.
+        """
+        out: dict[str, PrecomputedScreenSeries] = {}
+        for code, bars in bars_by_code.items():
+            sorted_bars = sorted(bars, key=lambda b: b.trade_date)
+            if len(sorted_bars) < 5:
+                continue
+            out[code] = PrecomputedScreenSeries.build(
+                code, sorted_bars, self._determine_trend_bias
+            )
+        return out
+
+
+    @staticmethod
     def quote_timestamp() -> datetime:
         return datetime.now(UTC)
 
@@ -407,15 +714,24 @@ class MarketDataService:
         price_vs_ma20_pct: float | None,
         return_20d_pct: float | None,
     ) -> str:
+        # If any leg is missing we cannot honestly classify the trend — fall
+        # back to "neutral" rather than letting `(None or 0)` silently flip
+        # the comparison and emit a misleading bullish/bearish label.
+        if (
+            price_vs_ma5_pct is None
+            or price_vs_ma20_pct is None
+            or return_20d_pct is None
+        ):
+            return "neutral"
         bullish = (
-            (price_vs_ma5_pct or 0) > 0
-            and (price_vs_ma20_pct or 0) > 0
-            and (return_20d_pct or 0) > 0
+            price_vs_ma5_pct > 0
+            and price_vs_ma20_pct > 0
+            and return_20d_pct > 0
         )
         bearish = (
-            (price_vs_ma5_pct or 0) < 0
-            and (price_vs_ma20_pct or 0) < 0
-            and (return_20d_pct or 0) < 0
+            price_vs_ma5_pct < 0
+            and price_vs_ma20_pct < 0
+            and return_20d_pct < 0
         )
 
         if bullish:
@@ -482,6 +798,9 @@ class MarketDataService:
         close_series = pd.Series(closes, dtype="float64")
         rsi_series = RSIIndicator(close_series, window=14).rsi()
 
+        # MACD(12, 26, 9) needs ~34 bars of warmup before the histogram
+        # stabilizes. Below 26 we cannot even seed the slow EMA, so return
+        # None for the MACD trio rather than emit unreliable values.
         if len(closes) < 26:
             latest_rsi = rsi_series.iloc[-1]
             return (float(latest_rsi) if pd.notna(latest_rsi) else None, None, None, None)
@@ -570,6 +889,8 @@ class MarketDataService:
         screen_type: str,
         analysis: StockAnalysisSummaryOut,
         params: StockScreenParams,
+        *,
+        lhb_recent: dict[str, dict] | None = None,
     ) -> str | None:
         if screen_type == "strong_uptrend":
             min_return_20d_pct = (
@@ -579,8 +900,10 @@ class MarketDataService:
             )
             if (
                 analysis.trend_bias == "bullish"
-                and (analysis.return_20d_pct or 0) >= min_return_20d_pct
-                and (analysis.rsi14 or 0) >= 50
+                and analysis.return_20d_pct is not None
+                and analysis.return_20d_pct >= min_return_20d_pct
+                and analysis.rsi14 is not None
+                and analysis.rsi14 >= 50
             ):
                 return f"多头趋势延续，20日收益超过 {min_return_20d_pct:.1f}% 且 RSI 共振偏强"
             return None
@@ -593,10 +916,19 @@ class MarketDataService:
                 params.min_return_5d_pct if params.min_return_5d_pct is not None else 0
             )
             if (
-                (analysis.volume_ratio_5d or 0) >= min_volume_ratio
-                and (analysis.return_5d_pct or 0) > min_return_5d_pct
-                and (analysis.macd_histogram or 0) > 0
+                analysis.volume_ratio_5d is not None
+                and analysis.volume_ratio_5d >= min_volume_ratio
+                and analysis.return_5d_pct is not None
+                and analysis.return_5d_pct > min_return_5d_pct
             ):
+                # MACD positivity is now an opt-in filter. Historically this
+                # screener silently required macd_histogram > 0, which often
+                # produced empty result sets on otherwise-valid breakouts.
+                if params.require_macd_positive and (
+                    analysis.macd_histogram is None
+                    or analysis.macd_histogram <= 0
+                ):
+                    return None
                 return f"量比超过 {min_volume_ratio:.2f}x 且近5日表现转强，具备突破观察价值"
             return None
 
@@ -606,11 +938,148 @@ class MarketDataService:
             )
             if (
                 analysis.trend_bias == "bullish"
-                and (analysis.price_vs_ma20_pct or 0) > 0
-                and -3 <= (analysis.return_5d_pct or 0) <= max_return_5d_pct
+                and analysis.price_vs_ma20_pct is not None
+                and analysis.price_vs_ma20_pct > 0
+                and analysis.return_5d_pct is not None
+                and -3 <= analysis.return_5d_pct <= max_return_5d_pct
             ):
                 return f"中期趋势未坏，近5日回撤控制在 {max_return_5d_pct:.1f}% 内，可继续跟踪"
             return None
+
+        if screen_type == "first_limit_up_low":
+            # 低位首板：今日涨停 + 前 N 日没有涨停 + 当前价不在 60 日高位
+            if not analysis.is_limit_up_today:
+                return None
+            quiet_required = (
+                params.min_quiet_days if params.min_quiet_days is not None else 20
+            )
+            since = analysis.days_since_last_limit_up
+            # ``days_since_last_limit_up`` is the offset to the *previous*
+            # limit-up bar; today's own limit-up was registered before the
+            # field was read. ``None`` means no prior streak in the window —
+            # treat as fresh enough.
+            if since is not None and since < quiet_required:
+                return None
+            high_ratio_cap = (
+                params.max_high_60d_ratio
+                if params.max_high_60d_ratio is not None
+                else 0.85
+            )
+            if (
+                analysis.high_60d_ratio is not None
+                and analysis.high_60d_ratio > high_ratio_cap
+            ):
+                return None
+            return f"低位首板：当前价仅为60日高的 {(analysis.high_60d_ratio or 0)*100:.1f}%，{quiet_required}日内无前板"
+
+        if screen_type == "leader_streak":
+            # 龙头连板：连板 ≥ N 天 + 量能放大 + 趋势偏强
+            min_streak = params.min_streak if params.min_streak is not None else 3
+            min_volume_ratio = (
+                params.min_volume_ratio if params.min_volume_ratio is not None else 1.2
+            )
+            if (
+                analysis.consec_limit_up_days is None
+                or analysis.consec_limit_up_days < min_streak
+            ):
+                return None
+            if (
+                analysis.volume_ratio_5d is None
+                or analysis.volume_ratio_5d < min_volume_ratio
+            ):
+                return None
+            if analysis.trend_bias != "bullish":
+                return None
+            return (
+                f"龙头连板：已连板 {analysis.consec_limit_up_days} 天，量比 "
+                f"{analysis.volume_ratio_5d:.2f}x 配合"
+            )
+
+        if screen_type == "zt_relay":
+            # 涨停接力：昨日涨停 + 今日不能跳空过高 + 今日量比保持 + 板数不过高
+            if analysis.consec_limit_up_days is None:
+                return None
+            if analysis.is_limit_up_today:
+                return None  # already in board, not a relay candidate
+            if (
+                analysis.days_since_last_limit_up is None
+                or analysis.days_since_last_limit_up != 1
+            ):
+                return None
+            # max_streak now works against the prior streak (days_since==1
+            # means yesterday was zt; prior_consec is that streak's length).
+            max_streak = params.max_streak if params.max_streak is not None else 3
+            if (
+                analysis.prior_consec_limit_up_days is not None
+                and analysis.prior_consec_limit_up_days > max_streak
+            ):
+                return None
+            max_gap = (
+                params.max_open_gap_pct
+                if params.max_open_gap_pct is not None
+                else 5.0
+            )
+            # Reject gap-downs: a relay setup wants positive gap-up. Allow
+            # exactly 0 (flat open) but reject negative gaps.
+            if analysis.open_gap_pct is None or analysis.open_gap_pct < 0:
+                return None
+            if analysis.open_gap_pct > max_gap:
+                return None
+            min_volume_ratio = (
+                params.min_volume_ratio if params.min_volume_ratio is not None else 1.0
+            )
+            if (
+                analysis.volume_ratio_5d is None
+                or analysis.volume_ratio_5d < min_volume_ratio
+            ):
+                return None
+            prior_streak_text = (
+                f"前板 {analysis.prior_consec_limit_up_days} 连板，"
+                if analysis.prior_consec_limit_up_days
+                else ""
+            )
+            return (
+                f"涨停接力：{prior_streak_text}今日开盘缺口 "
+                f"{(analysis.open_gap_pct or 0):+.2f}%，"
+                f"量比 {analysis.volume_ratio_5d:.2f}x"
+            )
+
+        if screen_type == "lhb_follow":
+            # 龙虎榜跟买：最近 N 日上榜且净买入达到阈值，今日跟随介入。
+            if lhb_recent is None:
+                return None
+            info = lhb_recent.get(analysis.symbol)
+            if info is None:
+                return None
+            net_buy_yi = info.get("net_buy_yi")
+            if net_buy_yi is None:
+                return None
+            min_yi = (
+                params.min_net_buy_yi
+                if params.min_net_buy_yi is not None
+                else 0.3
+            )
+            if net_buy_yi < min_yi:
+                return None
+            # 避开高开过多的跟买（次日大幅高开易破位）。当 open_gap_pct 缺失时
+            # 不强制要求，避免在历史回测早期窗口因数据不足而误杀。
+            max_gap = (
+                params.max_open_gap_pct
+                if params.max_open_gap_pct is not None
+                else 5.0
+            )
+            if (
+                analysis.open_gap_pct is not None
+                and analysis.open_gap_pct > max_gap
+            ):
+                return None
+            reason_text = info.get("reason") or "上榜"
+            lhb_date = info.get("trade_date")
+            date_text = f"{lhb_date}" if lhb_date is not None else "近日"
+            return (
+                f"龙虎榜跟买：{date_text} {reason_text}，"
+                f"净买入 {net_buy_yi:.2f} 亿"
+            )
 
         return None
 
@@ -630,6 +1099,51 @@ class MarketDataService:
             return sorted(
                 matches,
                 key=lambda item: ((item.return_20d_pct or 0), -(item.return_5d_pct or 0)),
+                reverse=True,
+            )
+
+        if screen_type == "first_limit_up_low":
+            # Lowest 60d-high ratio first (most depressed) then highest volume.
+            return sorted(
+                matches,
+                key=lambda item: (
+                    (item.high_60d_ratio if item.high_60d_ratio is not None else 1.0),
+                    -(item.volume_ratio_5d or 0),
+                ),
+            )
+
+        if screen_type == "leader_streak":
+            # Streak length is the dominant signal; longer streak = stronger leader.
+            return sorted(
+                matches,
+                key=lambda item: (
+                    (item.consec_limit_up_days or 0),
+                    (item.return_5d_pct or 0),
+                    (item.volume_ratio_5d or 0),
+                ),
+                reverse=True,
+            )
+
+        if screen_type == "zt_relay":
+            return sorted(
+                matches,
+                key=lambda item: (
+                    (item.volume_ratio_5d or 0),
+                    (item.return_20d_pct or 0),
+                ),
+                reverse=True,
+            )
+
+        if screen_type == "lhb_follow":
+            # 净买入额排序无法从 StockScreenItemOut 直接拿到，但 match_reason
+            # 文本已编入数值，先按 5 日量能 + 20 日动量近似排序，把最有承接量的
+            # 票排前面。
+            return sorted(
+                matches,
+                key=lambda item: (
+                    (item.volume_ratio_5d or 0),
+                    (item.return_20d_pct or 0),
+                ),
                 reverse=True,
             )
 
@@ -851,3 +1365,221 @@ class MarketDataService:
             return SyncResult(
                 synced=count, message=f"{trade_date} 新闻抓取成功，共 {count} 条"
             )
+
+
+@dataclass
+class PrecomputedScreenSeries:
+    """Vectorized indicators for a single code, indexed by sorted dates.
+
+    All series are aligned with ``dates``. ``analysis_at`` finds the latest
+    bar with ``trade_date <= as_of`` via binary search and reads each
+    indicator at that index, producing a ``StockAnalysisSummaryOut`` without
+    re-running pandas/TA on per-call subsets.
+    """
+
+    dates: list[date]
+    opens: list[float]
+    closes: list[float]
+    volumes: list[float]
+    ma5: list[float | None]
+    ma20: list[float | None]
+    rsi14: list[float | None]
+    macd_hist: list[float | None]
+    return_5d: list[float | None]
+    return_20d: list[float | None]
+    vol_ratio_5d: list[float | None]
+    trend_bias: list[str]
+    pct_change_1d: list[float | None]
+    is_limit_up: list[bool]
+    consec_limit_up: list[int]
+    open_gap_pct: list[float | None]
+    high_60d_ratio: list[float | None]
+    days_since_last_zt: list[int | None]
+    # Streak that ended at the last zt bar PRIOR to index i (None when no
+    # prior zt exists).
+    prior_consec_limit_up: list[int | None]
+
+    @staticmethod
+    def _limit_up_threshold_pct(code: str) -> float:
+        """A-share daily price-limit thresholds, by board prefix.
+
+        - 300xxx (创业板) and 688xxx (科创板) and 8/4xxx (北交所): 20% (post-2020)
+        - 6xxxxx, 0xxxxx, 002xxx (主板/中小板): 10%
+        Using a 0.2 pct tolerance ('reach' rather than 'exact') so a 9.97%
+        close still counts — A-share quote ticks frequently produce closes
+        slightly under the theoretical limit.
+        """
+        if not code:
+            return 9.8
+        head = code[:3]
+        if head.startswith("300") or head.startswith("688") or code.startswith(("8", "4", "9")):
+            return 19.8
+        return 9.8
+
+    @classmethod
+    def build(
+        cls,
+        code: str,
+        sorted_bars: list[DailyBar],
+        trend_fn,  # type: ignore[no-untyped-def]
+    ) -> "PrecomputedScreenSeries":
+        n = len(sorted_bars)
+        dates = [b.trade_date for b in sorted_bars]
+        opens = [float(b.open) for b in sorted_bars]
+        closes = [float(b.close) for b in sorted_bars]
+        volumes = [float(b.volume) for b in sorted_bars]
+
+        close_series = pd.Series(closes, dtype="float64")
+        # Rolling means (NaN where window is short).
+        ma5_arr = close_series.rolling(window=5, min_periods=5).mean()
+        ma20_arr = close_series.rolling(window=20, min_periods=20).mean()
+        # 5/20-day returns: match the legacy `closes[-5]`/`closes[-20]`
+        # semantics — that's an offset of 4/19 sessions from the latest bar
+        # (Python negative indexing is 1-based from the end). Using
+        # pct_change(5) here would silently shift signals by one bar.
+        ret5_arr = close_series.pct_change(periods=4) * 100
+        ret20_arr = close_series.pct_change(periods=19) * 100
+        ret1_arr = close_series.pct_change(periods=1) * 100
+
+        # Volume ratio = today / mean(prev 5). Shift so the rolling mean
+        # excludes the current bar.
+        vol_series = pd.Series(volumes, dtype="float64")
+        prior5_mean = vol_series.shift(1).rolling(window=5, min_periods=5).mean()
+        vol_ratio = vol_series / prior5_mean
+
+        # 60-day rolling intraday-HIGH (inclusive of today). Used by
+        # first_limit_up_low. Using intraday `high` rather than `close` matches
+        # how traders look at "60 日高位"; denominator stays close-based.
+        high_series = pd.Series(
+            [float(b.high) for b in sorted_bars], dtype="float64"
+        )
+        high60_arr = high_series.rolling(window=60, min_periods=5).max()
+        high60_ratio = close_series / high60_arr
+
+        # Open gap relative to prior close: (open - prev_close) / prev_close.
+        prev_close = close_series.shift(1)
+        open_series = pd.Series(opens, dtype="float64")
+        gap_arr = (open_series - prev_close) / prev_close * 100
+
+        # RSI / MACD: TA library expects sufficient history. We compute on
+        # the full series once.
+        if n >= 14:
+            rsi_series = RSIIndicator(close_series, window=14).rsi()
+        else:
+            rsi_series = pd.Series([float("nan")] * n)
+        if n >= 26:
+            macd_diff_series = MACD(close_series).macd_diff()
+        else:
+            macd_diff_series = pd.Series([float("nan")] * n)
+
+        def _to_list(s: pd.Series) -> list[float | None]:
+            return [None if pd.isna(v) else float(v) for v in s]
+
+        ma5_list = _to_list(ma5_arr)
+        ma20_list = _to_list(ma20_arr)
+        rsi_list = _to_list(rsi_series)
+        macd_list = _to_list(macd_diff_series)
+        ret5_list = _to_list(ret5_arr)
+        ret20_list = _to_list(ret20_arr)
+        vol_list = _to_list(vol_ratio)
+        ret1_list = _to_list(ret1_arr)
+        high60_list = _to_list(high60_ratio)
+        gap_list = _to_list(gap_arr)
+
+        # Limit-up state per bar: pct_change_1d >= board threshold.
+        threshold = cls._limit_up_threshold_pct(code)
+        is_zt: list[bool] = [
+            (r is not None and r >= threshold) for r in ret1_list
+        ]
+        # Consecutive limit-up days (i.e. trailing streak ending at i).
+        consec: list[int] = [0] * n
+        for i in range(n):
+            if is_zt[i]:
+                consec[i] = (consec[i - 1] + 1) if i > 0 else 1
+            else:
+                consec[i] = 0
+        # Days since the last limit-up (None if never seen yet).
+        days_since: list[int | None] = [None] * n
+        prior_streak: list[int | None] = [None] * n
+        last_zt_idx: int | None = None
+        last_streak_end: int | None = None  # streak length of the most recent zt bar
+        for i in range(n):
+            if last_zt_idx is None:
+                days_since[i] = None
+                prior_streak[i] = None
+            else:
+                days_since[i] = i - last_zt_idx
+                prior_streak[i] = last_streak_end
+            if is_zt[i]:
+                last_zt_idx = i
+                last_streak_end = consec[i]
+
+        # trend_bias depends on price-vs-MA5/20 and 20d return; precompute it
+        # using the same helper as the live screener for behavioral parity.
+        trend: list[str] = []
+        for i in range(n):
+            ma5_v = ma5_list[i]
+            ma20_v = ma20_list[i]
+            r20 = ret20_list[i]
+            pv5 = (closes[i] - ma5_v) / ma5_v * 100 if ma5_v else None
+            pv20 = (closes[i] - ma20_v) / ma20_v * 100 if ma20_v else None
+            trend.append(trend_fn(pv5, pv20, r20))
+
+        return cls(
+            dates=dates,
+            opens=opens,
+            closes=closes,
+            volumes=volumes,
+            ma5=ma5_list,
+            ma20=ma20_list,
+            rsi14=rsi_list,
+            macd_hist=macd_list,
+            return_5d=ret5_list,
+            return_20d=ret20_list,
+            vol_ratio_5d=vol_list,
+            trend_bias=trend,
+            pct_change_1d=ret1_list,
+            is_limit_up=is_zt,
+            consec_limit_up=consec,
+            open_gap_pct=gap_list,
+            high_60d_ratio=high60_list,
+            days_since_last_zt=days_since,
+            prior_consec_limit_up=prior_streak,
+        )
+
+    def analysis_at(self, code: str, as_of: date) -> StockAnalysisSummaryOut | None:
+        """Return point-in-time analysis using the latest bar <= ``as_of``."""
+        # bisect_right - 1 gives the largest index with date <= as_of.
+        idx = bisect_right(self.dates, as_of) - 1
+        if idx < 0:
+            return None
+        ma5_v = self.ma5[idx]
+        ma20_v = self.ma20[idx]
+        latest_close = self.closes[idx]
+        pv5 = (latest_close - ma5_v) / ma5_v * 100 if ma5_v else None
+        pv20 = (latest_close - ma20_v) / ma20_v * 100 if ma20_v else None
+        return StockAnalysisSummaryOut(
+            symbol=code,
+            latest_close=latest_close,
+            ma5=ma5_v,
+            ma20=ma20_v,
+            rsi14=self.rsi14[idx],
+            macd=None,
+            macd_signal=None,
+            macd_histogram=self.macd_hist[idx],
+            price_vs_ma5_pct=pv5,
+            price_vs_ma20_pct=pv20,
+            return_5d_pct=self.return_5d[idx],
+            return_20d_pct=self.return_20d[idx],
+            volume_ratio_5d=self.vol_ratio_5d[idx],
+            trend_bias=self.trend_bias[idx],
+            summary="",
+            signals=[],
+            pct_change_1d=self.pct_change_1d[idx],
+            is_limit_up_today=self.is_limit_up[idx],
+            consec_limit_up_days=self.consec_limit_up[idx],
+            open_gap_pct=self.open_gap_pct[idx],
+            high_60d_ratio=self.high_60d_ratio[idx],
+            days_since_last_limit_up=self.days_since_last_zt[idx],
+            prior_consec_limit_up_days=self.prior_consec_limit_up[idx],
+        )

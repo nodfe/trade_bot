@@ -184,6 +184,7 @@ EXPECTED_SCHEDULE = {
     "sync-dragon-tiger-daily": "market_data.sync_dragon_tiger_list",
     "sync-news-daily": "market_data.sync_daily_news",
     "compute-strategy-kpi-snapshots-daily": "strategies.compute_kpi_snapshots",
+    "dispatch-strategy-subscriptions": "strategies.dispatch_subscriptions",
 }
 
 
