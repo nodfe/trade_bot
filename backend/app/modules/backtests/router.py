@@ -31,8 +31,7 @@ async def list_eligible_codes() -> list[EligibleCodeOut]:
     """Stocks with locally synced daily bars, suitable for backtesting."""
     rows = await _repo.get_eligible_backtest_codes()
     return [
-        EligibleCodeOut(code=code, name=name, bar_count=bar_count)
-        for code, name, bar_count in rows
+        EligibleCodeOut(code=code, name=name, bar_count=bar_count) for code, name, bar_count in rows
     ]
 
 
@@ -55,7 +54,5 @@ async def preview_screener(
     before kicking off a full walk-forward backtest.
     """
     params = StockScreenParams(limit=top_n)
-    result = await _market.screen_stocks(
-        screen_type, params, as_of_date=as_of_date
-    )
+    result = await _market.screen_stocks(screen_type, params, as_of_date=as_of_date)
     return result.items

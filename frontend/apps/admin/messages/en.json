@@ -77,6 +77,26 @@
         "label": "Pullback Watch",
         "description": "Solid mid-term trend with short-term volume contraction pullback. Awaiting secondary breakout opportunities.",
         "badge": "🎯 Buy the Dip"
+      },
+      "first_limit_up_low": {
+        "label": "First Limit-Up (Low)",
+        "description": "Long-quiet names igniting their first limit-up from a low base. Catch the early breakout entry.",
+        "badge": "🚀 Low-Base Ignition"
+      },
+      "leader_streak": {
+        "label": "Leader Streak",
+        "description": "Theme leaders printing consecutive limit-ups with rising volume. Stick with the strongest sector name.",
+        "badge": "👑 Streak Leader"
+      },
+      "zt_relay": {
+        "label": "Limit-Up Relay",
+        "description": "Buying yesterday's limit-up names that gap up modestly today — short-term relay setups.",
+        "badge": "🔥 ZT Relay"
+      },
+      "lhb_follow": {
+        "label": "LHB Follow",
+        "description": "Follow the day after a stock posts to the dragon-tiger list with significant net institutional buying.",
+        "badge": "🐉 Smart Money"
       }
     },
     "tuning": {
@@ -217,29 +237,130 @@
       "sharpe": "Sharpe",
       "max_drawdown": "Max Drawdown",
       "win_rate": "Win Rate",
+      "sortino": "Sortino",
+      "calmar": "Calmar",
+      "turnover": "Turnover",
+      "alpha": "Alpha vs HS300",
       "as_of": "As of {date}",
       "no_data": "No backtest KPIs computed yet"
+    },
+    "toolbar": {
+      "search_placeholder": "Search strategies by name or tag...",
+      "sort_by": "Sort by",
+      "sort_sharpe": "Sharpe",
+      "sort_annualized": "Annualized",
+      "sort_drawdown": "Max Drawdown",
+      "sort_sortino": "Sortino",
+      "tab_catalog": "Strategy Catalog",
+      "tab_combo": "My Combos",
+      "new_strategy": "New Strategy",
+      "favorite": "Favorite",
+      "unfavorite": "Unfavorite"
     },
     "drawer": {
       "title": "Strategy Details",
       "description": "Review the strategy rationale, default thresholds, and run an embedded historical backtest right here.",
       "params_title": "Default Parameters",
-      "backtest_section_title": "Embedded Backtest"
+      "backtest_section_title": "Embedded Backtest",
+      "tab_backtest": "Backtest",
+      "tab_attribution": "Attribution",
+      "tab_subscription": "Subscription"
+    },
+    "backtest_form": {
+      "top_n": "Top N",
+      "rebalance": "Rebalance",
+      "weighting": "Weighting",
+      "fee_bps": "Fee (bps)",
+      "stop_loss_pct": "Stop Loss %",
+      "stop_profit_pct": "Take Profit %",
+      "start_date": "Start Date",
+      "end_date": "End Date",
+      "benchmark": "Benchmark",
+      "params_section": "Screener Parameters",
+      "run": "Run Backtest",
+      "running": "Running...",
+      "alpha": "Alpha vs benchmark",
+      "monthly_heatmap": "Monthly Returns",
+      "equity_vs_benchmark": "Strategy vs Benchmark"
+    },
+    "attribution": {
+      "sector_exposure": "Sector Exposure",
+      "market_cap": "Market Cap Buckets",
+      "monthly": "Monthly Returns",
+      "yearly": "Yearly Returns",
+      "no_data": "No attribution data available."
+    },
+    "subscription": {
+      "title": "Subscriptions",
+      "channel_id": "Bot Channel ID",
+      "schedule": "Cron Schedule",
+      "preset_weekly": "Weekly · Mon 09:30",
+      "preset_daily_close": "Each trading day after close",
+      "create": "Create Subscription",
+      "creating": "Creating...",
+      "delete": "Delete",
+      "no_subscriptions": "No subscriptions yet for this strategy.",
+      "channel_required": "Channel ID is required."
+    },
+    "custom_form": {
+      "title": "Create Custom Strategy",
+      "edit_title": "Edit Custom Strategy",
+      "name": "Strategy Name",
+      "description": "Description",
+      "base_template": "Base Template",
+      "params_section": "Parameters",
+      "submit": "Save",
+      "submitting": "Saving...",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "delete_confirm": "Delete this custom strategy?",
+      "name_required": "Name is required."
     },
     "params": {
       "min_return_20d_pct": "Min 20D Return",
       "min_return_5d_pct": "Min 5D Return",
       "max_return_5d_pct": "Max 5D Return",
-      "min_volume_ratio": "Min Volume Ratio"
+      "min_volume_ratio": "Min Volume Ratio",
+      "limit": "Limit"
     },
     "use_cases": {
       "strong_uptrend": "Trend-following entries on names that are already breaking out, with confirming volume and momentum.",
       "volume_breakout": "Catching sudden volume spikes that mark institutional interest before the rest of the tape notices.",
-      "pullback_watch": "Buying weakness inside an established uptrend — names that pulled back recently but are still trending up over 20 days."
+      "pullback_watch": "Buying weakness inside an established uptrend — names that pulled back recently but are still trending up over 20 days.",
+      "first_limit_up_low": "Long-quiet, low-base names firing their first limit-up today. Catch the ignition entry before consensus.",
+      "leader_streak": "Theme leaders that printed multiple consecutive limit-ups with rising volume — ride the strongest streak.",
+      "zt_relay": "Day after a limit-up: small gap-up open lets you relay the prior day's leader on short-term momentum.",
+      "lhb_follow": "Day after a name lands on the dragon-tiger list with material net buying — ride the smart-money tail."
     },
     "custom": {
-      "title": "Custom Strategies (Coming Soon)",
-      "description": "User-defined factor stacks and scheduled scans will appear here. For now, configure the built-ins via the Screeners page."
+      "title": "Custom Strategies",
+      "description": "User-defined factor stacks. Click \"New Strategy\" above to clone and tune a built-in template."
+    },
+    "combo": {
+      "title": "Strategy Combo",
+      "subtitle": "Compose multiple strategies into one weighted portfolio.",
+      "add_item": "Add Strategy",
+      "remove": "Remove",
+      "weight": "Weight",
+      "weight_normalized": "Normalized",
+      "rebalance": "Rebalance",
+      "top_n": "Top N",
+      "weighting": "Weighting",
+      "start_date": "Start Date",
+      "end_date": "End Date",
+      "compute": "Compute Combo",
+      "computing": "Computing...",
+      "composite": "Composite Equity",
+      "per_strategy": "Per-Strategy Curves",
+      "correlation": "Daily Return Correlation",
+      "kpi_total": "Total Return",
+      "kpi_annualized": "Annualized",
+      "kpi_sharpe": "Sharpe",
+      "kpi_sortino": "Sortino",
+      "kpi_calmar": "Calmar",
+      "kpi_max_dd": "Max Drawdown",
+      "no_items": "Add at least one strategy to compute a combo.",
+      "back_to_catalog": "Back to Catalog"
     }
   },
   "watchlists": {
@@ -418,6 +539,16 @@
         "cost_advanced_title": "Advanced Cost Model",
         "cost_advanced_hint": "Decimal rates for commission / stamp duty / slippage, applied per trade.",
         "risk_section_title": "Risk Controls (optional)",
+        "markets_section_title": "Market Universe",
+        "markets_hint": "When no board is selected, all 5 boards are scanned (ST excluded). Tap ST to include risk-warned stocks.",
+        "markets": {
+          "main_sh": "SSE Main",
+          "main_sz": "SZSE Main",
+          "chinext": "ChiNext",
+          "star": "STAR",
+          "bse": "BSE",
+          "st": "ST / *ST"
+        },
         "optional_hint": "(optional)"
       },
       "preview": {
@@ -439,7 +570,19 @@
         "strategy_label": "Strategy",
         "trades_columns": {
           "name": "Name",
-          "exit_reason": "Exit Reason"
+          "exit_reason": "Exit Reason",
+          "chart": "K-Line"
+        },
+        "fill_model_hint": "Fill model: screening runs at rebalance-day close; rebalance entries/exits fill at T+1 09:30 open. Stop-loss / take-profit fill same-day intraday at the threshold price.",
+        "chart_dialog": {
+          "title": "Trade K-Line (B/S markers)",
+          "loading": "Loading K-line data...",
+          "error": "Failed to load K-line data",
+          "empty": "No K-line data in this window",
+          "fill_buy_note": "Picked at rebalance-day close, filled at next-day 09:30 open.",
+          "fill_sell_rebalance_note": "Dropped at rebalance, filled at next-day 09:30 open.",
+          "fill_sell_stop_loss_note": "Stop-loss threshold touched intraday — filled same day at the threshold price.",
+          "fill_sell_take_profit_note": "Take-profit threshold touched intraday — filled same day at the threshold price."
         },
         "holdings_history_title": "Rebalance Holdings History",
         "holdings_history_collapse": "Collapse",

@@ -77,6 +77,26 @@
         "label": "回踩观察",
         "description": "中期趋势保持良好，短线缩量回踩，静待二次启动机会。",
         "badge": "🎯 逢低吸纳"
+      },
+      "first_limit_up_low": {
+        "label": "低位首板",
+        "description": "长期低位筹码松动，今日首板启动，关注启动信号介入。",
+        "badge": "🚀 低位启动"
+      },
+      "leader_streak": {
+        "label": "龙头战法",
+        "description": "连板龙头股，量价配合强势，紧跟题材主线最强标的。",
+        "badge": "👑 龙头连板"
+      },
+      "zt_relay": {
+        "label": "接力战法",
+        "description": "次日小幅高开承接前板，短线接力高胜率机会。",
+        "badge": "🔥 涨停接力"
+      },
+      "lhb_follow": {
+        "label": "龙虎榜跟买",
+        "description": "上榜次日跟随机构/游资买入，捕捉资金抱团短线机会。",
+        "badge": "🐉 跟主力"
       }
     },
     "tuning": {
@@ -217,29 +237,130 @@
       "sharpe": "Sharpe",
       "max_drawdown": "最大回撤",
       "win_rate": "胜率",
+      "sortino": "Sortino",
+      "calmar": "Calmar",
+      "turnover": "换手率",
+      "alpha": "超额（vs 沪深300）",
       "as_of": "截至 {date}",
       "no_data": "尚未生成回测 KPI，敬请稍候"
+    },
+    "toolbar": {
+      "search_placeholder": "按名称或标签搜索策略...",
+      "sort_by": "排序",
+      "sort_sharpe": "Sharpe",
+      "sort_annualized": "年化",
+      "sort_drawdown": "最大回撤",
+      "sort_sortino": "Sortino",
+      "tab_catalog": "策略目录",
+      "tab_combo": "我的组合",
+      "new_strategy": "新建策略",
+      "favorite": "收藏",
+      "unfavorite": "取消收藏"
     },
     "drawer": {
       "title": "策略详情",
       "description": "查看策略原理、默认阈值并直接在此运行历史回测。",
       "params_title": "默认参数",
-      "backtest_section_title": "嵌入式回测"
+      "backtest_section_title": "嵌入式回测",
+      "tab_backtest": "回测",
+      "tab_attribution": "归因",
+      "tab_subscription": "订阅"
+    },
+    "backtest_form": {
+      "top_n": "Top N",
+      "rebalance": "再平衡",
+      "weighting": "权重方式",
+      "fee_bps": "费率 (bps)",
+      "stop_loss_pct": "止损 %",
+      "stop_profit_pct": "止盈 %",
+      "start_date": "开始日期",
+      "end_date": "结束日期",
+      "benchmark": "基准",
+      "params_section": "选股参数",
+      "run": "运行回测",
+      "running": "回测中...",
+      "alpha": "超额收益（相对基准）",
+      "monthly_heatmap": "月度收益",
+      "equity_vs_benchmark": "策略 vs 基准"
+    },
+    "attribution": {
+      "sector_exposure": "行业暴露",
+      "market_cap": "市值分布",
+      "monthly": "月度收益",
+      "yearly": "年度收益",
+      "no_data": "暂无归因数据。"
+    },
+    "subscription": {
+      "title": "订阅",
+      "channel_id": "Bot 频道 ID",
+      "schedule": "Cron 调度表达式",
+      "preset_weekly": "每周一 09:30",
+      "preset_daily_close": "每个交易日盘后",
+      "create": "新建订阅",
+      "creating": "创建中...",
+      "delete": "删除",
+      "no_subscriptions": "该策略暂无订阅。",
+      "channel_required": "频道 ID 不能为空。"
+    },
+    "custom_form": {
+      "title": "新建自定义策略",
+      "edit_title": "编辑自定义策略",
+      "name": "策略名称",
+      "description": "说明",
+      "base_template": "基础模板",
+      "params_section": "参数",
+      "submit": "保存",
+      "submitting": "保存中...",
+      "cancel": "取消",
+      "delete": "删除",
+      "delete_confirm": "确定删除该自定义策略？",
+      "name_required": "策略名称不能为空。"
     },
     "params": {
       "min_return_20d_pct": "最小 20 日涨幅",
       "min_return_5d_pct": "最小 5 日涨幅",
       "max_return_5d_pct": "最大 5 日涨幅",
-      "min_volume_ratio": "最小量比"
+      "min_volume_ratio": "最小量比",
+      "limit": "数量"
     },
     "use_cases": {
       "strong_uptrend": "在已突破、量价共振、动量延续的标的上做趋势追踪进场。",
       "volume_breakout": "捕捉机构介入引发的成交量异动，先于市场感知的脉冲式机会。",
-      "pullback_watch": "在确立的上行趋势里逢低吸纳：近期回踩，但 20 日仍处于上升通道。"
+      "pullback_watch": "在确立的上行趋势里逢低吸纳：近期回踩，但 20 日仍处于上升通道。",
+      "first_limit_up_low": "长期低位、近期无涨停，今日首板启动，捕捉低吸入场点。",
+      "leader_streak": "题材龙头连续涨停，量能持续放大，跟住板块最强标的。",
+      "zt_relay": "次日跟随昨日板上股，小幅高开承接，捕捉接力短线机会。",
+      "lhb_follow": "龙虎榜上榜次日跟随主力资金，叠加净买入门槛筛掉零星上榜。"
     },
     "custom": {
-      "title": "自定义策略（即将推出）",
-      "description": "未来将支持用户定义因子组合与定时扫描。当前先通过 Screeners 选股页调整内置策略参数。"
+      "title": "自定义策略",
+      "description": "用户自定义因子组合。点击上方「新建策略」克隆并调整内置模板。"
+    },
+    "combo": {
+      "title": "策略组合",
+      "subtitle": "将多个策略组合成加权投资组合。",
+      "add_item": "添加策略",
+      "remove": "移除",
+      "weight": "权重",
+      "weight_normalized": "归一化",
+      "rebalance": "再平衡",
+      "top_n": "Top N",
+      "weighting": "权重方式",
+      "start_date": "开始日期",
+      "end_date": "结束日期",
+      "compute": "计算组合",
+      "computing": "计算中...",
+      "composite": "组合净值",
+      "per_strategy": "子策略曲线",
+      "correlation": "日收益相关性",
+      "kpi_total": "总收益",
+      "kpi_annualized": "年化",
+      "kpi_sharpe": "Sharpe",
+      "kpi_sortino": "Sortino",
+      "kpi_calmar": "Calmar",
+      "kpi_max_dd": "最大回撤",
+      "no_items": "至少添加一个策略才能计算组合。",
+      "back_to_catalog": "返回策略目录"
     }
   },
   "watchlists": {
@@ -418,6 +539,16 @@
         "cost_advanced_title": "高级成本模型",
         "cost_advanced_hint": "佣金 / 印花税 / 滑点的小数费率，按交易额比例扣减。",
         "risk_section_title": "风险控制（可选）",
+        "markets_section_title": "市场范围",
+        "markets_hint": "未选择任何板块时默认覆盖全部板块（不含 ST）。点击 ST 单独纳入风险股。",
+        "markets": {
+          "main_sh": "沪市主板",
+          "main_sz": "深市主板",
+          "chinext": "创业板",
+          "star": "科创板",
+          "bse": "北交所",
+          "st": "ST / *ST"
+        },
         "optional_hint": "(可选)"
       },
       "preview": {
@@ -439,7 +570,19 @@
         "strategy_label": "策略曲线",
         "trades_columns": {
           "name": "名称",
-          "exit_reason": "退出原因"
+          "exit_reason": "退出原因",
+          "chart": "K 线"
+        },
+        "fill_model_hint": "成交模型：选股发生在 rebalance 日收盘后；正常买卖均在 T+1 09:30 开盘价成交。止损/止盈是 T 日盘中触及阈值即成交（按阈值价填单）。",
+        "chart_dialog": {
+          "title": "交易 K 线（B/S 标记）",
+          "loading": "正在加载 K 线数据...",
+          "error": "K 线数据获取失败",
+          "empty": "该窗口无可用 K 线数据",
+          "fill_buy_note": "rebalance 日选股，次日 09:30 开盘价买入。",
+          "fill_sell_rebalance_note": "rebalance 日不在新选名单，次日 09:30 开盘价卖出。",
+          "fill_sell_stop_loss_note": "当日盘中触及止损阈值，按阈值价同日成交。",
+          "fill_sell_take_profit_note": "当日盘中触及止盈阈值，按阈值价同日成交。"
         },
         "holdings_history_title": "再平衡持仓历史",
         "holdings_history_collapse": "收起",

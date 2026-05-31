@@ -5,4 +5,4 @@ export { useLWCTheme } from "./use-lwc-theme";
 export type { LWCThemeColors } from "./use-lwc-theme";
 
 export { KLineChart } from "./kline-chart";
-export type { KLineBar } from "./kline-chart";
+export type { KLineBar, KLineMarker } from "./kline-chart";

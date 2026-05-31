@@ -115,6 +115,15 @@ async def screen_stocks(
     min_return_5d_pct: float | None = Query(None, description="5日最小涨幅"),
     min_volume_ratio: float | None = Query(None, description="最小量比"),
     max_return_5d_pct: float | None = Query(None, description="5日最大涨幅，用于回撤观察"),
+    require_macd_positive: bool = Query(
+        False, description="量价突破是否要求 MACD 柱体为正 (默认 False)"
+    ),
+    max_candidates: int = Query(1500, ge=1, le=10000, description="评估候选股票上限"),
+    markets: list[str] | None = Query(
+        None,
+        description="板块过滤，多选: main_sh / main_sz / chinext / star / bse",
+    ),
+    include_st: bool = Query(False, description="是否纳入 ST/*ST 股"),
 ) -> StockScreenResultOut:
     result = await svc.screen_stocks(
         screen_type,
@@ -124,6 +133,10 @@ async def screen_stocks(
             min_return_5d_pct=min_return_5d_pct,
             min_volume_ratio=min_volume_ratio,
             max_return_5d_pct=max_return_5d_pct,
+            require_macd_positive=require_macd_positive,
+            max_candidates=max_candidates,
+            markets=markets,
+            include_st=include_st,
         ),
     )
     # Empty result is a legitimate "no candidates today" outcome — return the
